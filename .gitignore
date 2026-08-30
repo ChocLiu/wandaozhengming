@@ -1,0 +1,16 @@
+# Godot 4
+.godot/
+export/
+
+# 系统杂项
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# 临时/日志
+*.tmp
+*.log
+*.bak
+
+# 本地草稿（不删文件，只建草稿目录）
+_drafts/
