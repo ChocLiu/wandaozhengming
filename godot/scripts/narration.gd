@@ -108,6 +108,10 @@ static func seal(u) -> Dictionary:
 	return {"t": "%s服下止血丹——创口止血，血不再流" % u.display_name, "c": C_INFO}
 
 
+static func item_used_this_turn(u) -> Dictionary:
+	return {"t": "%s本回合已服过此丹，药力未化，不宜再服" % u.display_name, "c": C_INFO}
+
+
 static func no_item(u) -> Dictionary:
 	return {"t": "%s摸向药囊——止血丹已经用尽了" % u.display_name, "c": C_INFO}
 

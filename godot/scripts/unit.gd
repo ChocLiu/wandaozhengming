@@ -39,6 +39,7 @@ var rules: Dictionary = {}            # 规则领悟值：{"空间": 60.0}——
 var technique_proficiency: Dictionary = {}  # 功法修为值：{功法id: 值}
 var dao_proficiency: Dictionary = {}  # 道领悟值（P0 仅显示）
 var items: Dictionary = {"止血丹": 3}
+var items_used_this_turn: Dictionary = {}  # {药名: 本回合已用次数}——每回合每种丹药限用一次（回合开始清零）
 var pos: Vector2i = Vector2i(5, 5)    # 场上位置
 
 

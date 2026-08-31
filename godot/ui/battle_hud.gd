@@ -24,7 +24,9 @@ var move_row: HBoxContainer
 var rule_toggle: CheckButton
 var restart_btn: Button
 var switch_btn: Button
+var item_btn: Button
 var _action_buttons: Array[Button] = []
+var _item_used := false       # 本回合该丹药已用（每回合每种限一次）
 var _battle = null
 
 
@@ -82,9 +84,9 @@ func _ready() -> void:
 	b = _make_button("防御", func(): defend_pressed.emit())
 	_action_buttons.append(b)
 	action_row.add_child(b)
-	b = _make_button("丹药·止血", func(): item_pressed.emit())
-	_action_buttons.append(b)
-	action_row.add_child(b)
+	item_btn = _make_button("丹药·止血", func(): item_pressed.emit())
+	_action_buttons.append(item_btn)
+	action_row.add_child(item_btn)
 	b = _make_button("结束行动", func(): end_turn_pressed.emit())
 	_action_buttons.append(b)
 	action_row.add_child(b)
@@ -113,12 +115,20 @@ func _make_button(text: String, on_pressed: Callable) -> Button:
 
 
 func enable_actions(enabled: bool) -> void:
+	if enabled:
+		_item_used = false  # 新回合，丹药限次清零
 	for b in _action_buttons:
-		b.disabled = not enabled
+		b.disabled = (not enabled) or (b == item_btn and _item_used)
 	rule_toggle.disabled = not enabled
 	if not enabled:
 		clear_parts()
 		clear_moves()
+
+
+## 本回合该丹药已用 → 禁用按钮（不占出招机会的丹药规则）
+func set_item_used(used: bool) -> void:
+	_item_used = used
+	item_btn.disabled = _item_used or item_btn.disabled
 
 
 ## 弹出招式面板（当前激活功法的招式池，带 CD 状态）

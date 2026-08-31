@@ -163,6 +163,7 @@ func _on_unit_ready(u: Unit) -> void:
 	current_acted = false
 	pending_move = null
 	u.move_left = maxi(1, ceili(u.move_speed / 20.0))
+	u.items_used_this_turn.clear()  # 丹药每回合每种限用一次
 	_tick_cooldowns(u)
 	# —— 回合结算：失血与持续状态（按回合，不按实时——挂机不会流血而死）——
 	var bleed: float = BodySystem.bleed_amount(u)
@@ -326,13 +327,11 @@ func _on_defend_requested() -> void:
 
 
 func _on_item_requested() -> void:
-	if current_actor != player or current_acted:
-		if current_acted:
-			_say(Nar.acted_already(player))
+	if current_actor != player:
 		return
 	_do_item(player)
-	current_acted = true
-	if player.move_left <= 0:
+	# 丹药不占出招机会：已出手且无步数时才自动结束回合
+	if current_acted and player.move_left <= 0:
 		_end_turn(player)
 
 
@@ -358,7 +357,10 @@ func _ai_act_async(u: Unit) -> void:
 	var want_range := _max_ready_range(u)
 	if _chebyshev(u.pos, target.pos) > want_range:
 		_ai_move_toward(u, target, want_range)
-	# 2) 在射程内 → 随机出招（英雄坛说式），无招可用则防御兜底
+	# 2) 丹药不占行动——流血先吃药（每回合每种限一次），再出招
+	if _bleeding(u) and int(u.items.get("止血丹", 0)) > 0 and int(u.items_used_this_turn.get("止血丹", 0)) < 1 and randf() < 0.3:
+		_do_item(u)
+	# 3) 在射程内 → 随机出招（英雄坛说式），无招可用则防御兜底
 	if not current_acted:
 		var move := _pick_random_move(u)
 		if move != null and _in_range(u, target, move):
@@ -487,13 +489,20 @@ func _do_defend(u: Unit) -> void:
 	_say(Nar.defend(u))
 
 
+## 丹药规则：每回合每种限用一次、不占攻防行动次数（《战斗系统》§6）
 func _do_item(u: Unit) -> void:
+	if int(u.items_used_this_turn.get("止血丹", 0)) >= 1:
+		_say(Nar.item_used_this_turn(u))
+		return
 	if int(u.items.get("止血丹", 0)) <= 0:
 		_say(Nar.no_item(u))
 		return
 	u.items["止血丹"] = int(u.items["止血丹"]) - 1
+	u.items_used_this_turn["止血丹"] = int(u.items_used_this_turn.get("止血丹", 0)) + 1
 	BodySystem.seal_wounds(u)
 	_say(Nar.seal(u))
+	if u == player:
+		hud.set_item_used(true)
 
 
 func _check_death(u: Unit) -> void:
