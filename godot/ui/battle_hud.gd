@@ -30,6 +30,7 @@ func _ready() -> void:
 
 	log_rtl = RichTextLabel.new()
 	log_rtl.anchor_top = 1.0
+	log_rtl.anchor_bottom = 1.0
 	log_rtl.offset_left = 12.0
 	log_rtl.offset_top = -320.0
 	log_rtl.offset_right = 880.0
@@ -39,6 +40,7 @@ func _ready() -> void:
 
 	part_row = HBoxContainer.new()
 	part_row.anchor_top = 1.0
+	part_row.anchor_bottom = 1.0
 	part_row.offset_left = 12.0
 	part_row.offset_top = -160.0
 	part_row.offset_right = 1240.0
@@ -48,6 +50,7 @@ func _ready() -> void:
 
 	action_row = HBoxContainer.new()
 	action_row.anchor_top = 1.0
+	action_row.anchor_bottom = 1.0
 	action_row.offset_left = 12.0
 	action_row.offset_top = -70.0
 	action_row.offset_right = 1240.0
@@ -77,6 +80,8 @@ func _ready() -> void:
 	restart_btn.visible = false
 	restart_btn.anchor_left = 0.5
 	restart_btn.anchor_top = 0.5
+	restart_btn.anchor_right = 0.5
+	restart_btn.anchor_bottom = 0.5
 	restart_btn.offset_left = -80.0
 	restart_btn.offset_top = -20.0
 	restart_btn.offset_right = 80.0
@@ -90,6 +95,7 @@ func _ready() -> void:
 func _make_button(text: String, on_pressed: Callable) -> Button:
 	var b := Button.new()
 	b.text = text
+	b.custom_minimum_size = Vector2(96, 36)
 	b.pressed.connect(on_pressed)
 	return b
 
@@ -112,6 +118,7 @@ func set_parts(unit) -> void:
 		var p: String = part
 		var label := "%s·%s" % [p, BodySystem.STATE_NAMES[pd.state]]
 		var b := _make_button(label, func(): part_selected.emit(p))
+		b.custom_minimum_size = Vector2(120, 32)
 		part_row.add_child(b)
 
 
@@ -122,10 +129,14 @@ func clear_parts() -> void:
 
 func update_state(battle) -> void:
 	var actor: Unit = battle.current_actor
-	info_label.text = "【你】%s\n【对手】%s\n当前行动：%s" % [
+	var turn_text := actor.display_name if actor != null else "——"
+	var hint := ""
+	if actor == battle.player:
+		hint = "\n▶ 轮到你：点「攻击」再选部位（可勾选「融入规则」），或防御 / 吃止血丹"
+	info_label.text = "【你】%s\n【对手】%s\n当前行动：%s%s" % [
 		_unit_line(battle.player),
 		_unit_line(battle.opponent),
-		actor.display_name if actor != null else "——",
+		turn_text, hint,
 	]
 
 

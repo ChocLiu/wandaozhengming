@@ -309,6 +309,9 @@ func _draw_unit(u: Unit, color: Color) -> void:
 		return
 	var top_left := ORIGIN + Vector2(u.pos.x * CELL + 6.0, u.pos.y * CELL + 6.0)
 	draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), color)
+	# 当前行动者高亮描边
+	if current_actor == u:
+		draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(1.0, 0.9, 0.3), false, 3.0)
 	# ATB 行动条
 	var bar_w := (CELL - 12) * clampf(u.atb_progress / 100.0, 0.0, 1.0)
 	draw_rect(Rect2(top_left + Vector2(0, CELL - 2), Vector2(bar_w, 6)), Color(0.9, 0.85, 0.3))
