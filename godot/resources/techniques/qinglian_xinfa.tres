@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Technique" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/technique.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "qinglian_xinfa"
+display_name = "青莲心法"
+daoxi = "剑道"
+category = "心法"
+moves = []
+weapon_req = "空手"
+core_loop = "温养剑元，绵长气力——主修心法（P0：仅属性加成，心法机制后置）"
+target_parts = PackedStringArray()
+rule_slots = PackedStringArray()
+bonus_attack = 0.0
+bonus_armor = 5.0
+bonus_qi_max = 20.0
+bonus_stamina_max = 20.0
+bonus_xuan_max = 0.0
+conflicts_with = PackedStringArray()

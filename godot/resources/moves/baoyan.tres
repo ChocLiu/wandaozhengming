@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/move.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "baoyan"
+display_name = "爆炎"
+move_type = "普通"
+cost_pool = "玄力"
+cost_amount = 10.0
+speed_bonus = 0.0
+range_min = 1
+range_max = 3
+area_pattern = "溅射"
+cooldown = 2
+power_mod = 1.6
+target_parts = PackedStringArray("躯干")
+effects = PackedStringArray("灼烧")

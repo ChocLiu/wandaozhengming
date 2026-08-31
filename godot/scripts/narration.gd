@@ -18,13 +18,13 @@ static func pick(variants: Array) -> String:
 
 # ---------- 出招与命中 ----------
 
-static func attack_break(attacker, target, tech, part: String) -> Dictionary:
+static func attack_break(attacker, target, tech, move, part: String) -> Dictionary:
 	var v := pick([
-		"%s一式《%s》直取%s的「%s」——破甲而入！",
-		"%s催动《%s》，寒芒直奔%s——「%s」防御如纸，一击贯穿！",
-		"%s一声长啸，《%s》出手，%s的「%s」血光迸现！",
+		"%s一式《%s》「%s」直取%s的「%s」——破甲而入！",
+		"%s催动《%s》，「%s」寒芒直奔%s——「%s」防御如纸，一击贯穿！",
+		"%s一声长啸，《%s》「%s」出手，%s的「%s」血光迸现！",
 	])
-	return {"t": v % [attacker.display_name, tech.display_name, target.display_name, part], "c": C_HIT}
+	return {"t": v % [attacker.display_name, tech.display_name, move.display_name, target.display_name, part], "c": C_HIT}
 
 
 static func attack_vital(attacker, target, part: String) -> Dictionary:
@@ -85,7 +85,15 @@ static func no_xuan() -> Dictionary:
 # ---------- 状态/行动 ----------
 
 static func burn(target) -> Dictionary:
-	return {"t": "%s被灼烧！烈焰缠身，每秒流失气血" % target.display_name, "c": C_BURN}
+	return {"t": "%s被灼烧！烈焰缠身，每回合流失气血" % target.display_name, "c": C_BURN}
+
+
+static func bleed_tick(u) -> Dictionary:
+	var v := pick([
+		"%s的伤口仍在淌血……",
+		"血珠从%s的创口滚落……",
+	])
+	return {"t": v % [u.display_name], "c": C_WEAR}
 
 
 static func defend(u) -> Dictionary:
@@ -120,8 +128,28 @@ static func out_of_range(steps: int) -> Dictionary:
 	return {"t": "距离不够——先点棋盘走近（还剩 %d 步）" % steps, "c": C_INFO}
 
 
-static func no_stamina(attacker, pool: String, tech) -> Dictionary:
-	return {"t": "%s的%s不足，《%s》发不出去" % [attacker.display_name, pool, tech.display_name], "c": C_INFO}
+static func no_stamina(attacker, pool: String, move) -> Dictionary:
+	return {"t": "%s的%s不足，「%s」发不出去" % [attacker.display_name, pool, move.display_name], "c": C_INFO}
+
+
+static func switch_tech(u, tech, weapon: String) -> Dictionary:
+	var v := pick([
+		"%s手法一变——换使《%s》（%s在手）！",
+		"%s收了旧势，改走《%s》的路数！",
+	])
+	return {"t": v % [u.display_name, tech.display_name, weapon], "c": C_INFO}
+
+
+static func cd_busy(move) -> Dictionary:
+	return {"t": "「%s」尚未回气，强行使出必伤己身" % move.display_name, "c": C_INFO}
+
+
+static func all_cd(tech) -> Dictionary:
+	return {"t": "《%s》的招式皆未回气" % tech.display_name, "c": C_INFO}
+
+
+static func no_switch() -> Dictionary:
+	return {"t": "只有一门招式功法，无可切换", "c": C_INFO}
 
 
 static func acted_already(u) -> Dictionary:

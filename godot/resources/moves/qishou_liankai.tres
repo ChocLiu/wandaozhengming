@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/move.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "qishou_liankai"
+display_name = "起手式·莲开"
+move_type = "普通"
+cost_pool = "体力"
+cost_amount = 5.0
+speed_bonus = 15.0
+range_min = 1
+range_max = 1
+area_pattern = "单体"
+cooldown = 0
+power_mod = 1.0
+target_parts = PackedStringArray("咽喉", "手")
+effects = PackedStringArray()

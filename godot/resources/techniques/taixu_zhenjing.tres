@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="Technique" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/technique.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "taixu_zhenjing"
+display_name = "太虚阵经"
+daoxi = "阵道"
+category = "玄术"
+moves = []
+weapon_req = "空手"
+core_loop = "布阵图节点于场地，敌人踏入触发连锁（P0：未进战斗演示，占位数据）"
+target_parts = PackedStringArray("躯干")
+rule_slots = PackedStringArray("空间")
+bonus_attack = 0.0
+bonus_armor = 0.0
+bonus_speed = 0.0
+bonus_qi_max = 0.0
+bonus_stamina_max = 0.0
+bonus_xuan_max = 0.0
+conflicts_with = PackedStringArray()

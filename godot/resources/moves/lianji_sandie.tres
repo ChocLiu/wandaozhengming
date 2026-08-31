@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/move.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "lianji_sandie"
+display_name = "连击·三叠"
+move_type = "普通"
+cost_pool = "体力"
+cost_amount = 10.0
+speed_bonus = 25.0
+range_min = 1
+range_max = 1
+area_pattern = "单体"
+cooldown = 1
+power_mod = 1.2
+target_parts = PackedStringArray("躯干", "手")
+effects = PackedStringArray()
