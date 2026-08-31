@@ -1,0 +1,34 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+
+config_version=5
+
+[application]
+
+config/name="万道争鸣 P0 战斗原型"
+run/main_scene="res://scenes/battle.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.svg"
+
+[autoload]
+
+EventBus="*res://systems/event_bus.gd"
+StatusSystem="*res://systems/status_system.gd"
+ResourceSystem="*res://systems/resource_system.gd"
+FieldSystem="*res://systems/field_system.gd"
+UnitSystem="*res://systems/unit_system.gd"
+TimelineSystem="*res://systems/timeline_system.gd"
+BodySystem="*res://systems/body_system.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

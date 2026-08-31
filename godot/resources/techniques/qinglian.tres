@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Technique" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/technique.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "qinglian_jiange"
+display_name = "青莲剑歌"
+daoxi = "剑道"
+category = "玄修"
+cost_pool = "体力"
+cost_amount = 8.0
+speed_bonus = 20.0
+core_loop = "按剑谱顺序出招积累剑意；连击命中解锁变招；谱被打断则剑意溃散（P0：机制脚本后置，当前为数据声明）"
+target_parts = PackedStringArray("咽喉", "手", "躯干")
+rule_slots = PackedStringArray("空间")
