@@ -1,7 +1,8 @@
 class_name BattleHud
 extends Control
 ## P0 战斗 HUD（程序化构建，无 .tscn）。
-## 表现层职责：展示四池/部位状态/战斗日志，收集玩家输入——所有逻辑在 battle.gd 与六子系统。
+## 布局（1280×720 固定）：左上=单位信息 · 右侧竖排=战斗解说 · 底部=部位按钮+操作按钮。
+## 全部用 position/size 定位——锚点对 Node2D 下的根 Control 有踩坑记录（见 git 历史）。
 
 signal attack_pressed
 signal defend_pressed
@@ -10,6 +11,8 @@ signal end_turn_pressed
 signal part_selected(part: String)
 signal restart_requested
 
+const Grades := preload("res://scripts/cultivation_grades.gd")
+
 var info_label: Label
 var log_rtl: RichTextLabel
 var action_row: HBoxContainer
@@ -17,6 +20,7 @@ var part_row: HBoxContainer
 var rule_toggle: CheckButton
 var restart_btn: Button
 var _action_buttons: Array[Button] = []
+var _battle = null
 
 
 func _ready() -> void:
@@ -27,38 +31,30 @@ func _ready() -> void:
 	offset_bottom = 720.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # 根节点不挡输入，子控件各自接收
 
+	# 左上：单位信息
 	info_label = Label.new()
 	info_label.position = Vector2(12, 12)
-	info_label.size = Vector2(880, 180)
+	info_label.size = Vector2(850, 170)
 	add_child(info_label)
 
+	# 右侧竖排：战斗解说面板（不遮挡棋盘与按钮）
 	log_rtl = RichTextLabel.new()
-	log_rtl.anchor_top = 1.0
-	log_rtl.anchor_bottom = 1.0
-	log_rtl.offset_left = 12.0
-	log_rtl.offset_top = -320.0
-	log_rtl.offset_right = 880.0
-	log_rtl.offset_bottom = -12.0
+	log_rtl.position = Vector2(890, 12)
+	log_rtl.size = Vector2(378, 628)
 	log_rtl.scroll_following = true
 	add_child(log_rtl)
 
+	# 底部：部位按钮行
 	part_row = HBoxContainer.new()
-	part_row.anchor_top = 1.0
-	part_row.anchor_bottom = 1.0
-	part_row.offset_left = 12.0
-	part_row.offset_top = -160.0
-	part_row.offset_right = 1240.0
-	part_row.offset_bottom = -120.0
+	part_row.position = Vector2(12, 556)
+	part_row.size = Vector2(1260, 42)
 	part_row.add_theme_constant_override("separation", 6)
 	add_child(part_row)
 
+	# 底部：操作按钮行
 	action_row = HBoxContainer.new()
-	action_row.anchor_top = 1.0
-	action_row.anchor_bottom = 1.0
-	action_row.offset_left = 12.0
-	action_row.offset_top = -70.0
-	action_row.offset_right = 1240.0
-	action_row.offset_bottom = -28.0
+	action_row.position = Vector2(12, 648)
+	action_row.size = Vector2(1260, 44)
 	action_row.add_theme_constant_override("separation", 8)
 	add_child(action_row)
 
@@ -82,14 +78,8 @@ func _ready() -> void:
 	restart_btn = Button.new()
 	restart_btn.text = "重新开始"
 	restart_btn.visible = false
-	restart_btn.anchor_left = 0.5
-	restart_btn.anchor_top = 0.5
-	restart_btn.anchor_right = 0.5
-	restart_btn.anchor_bottom = 0.5
-	restart_btn.offset_left = -80.0
-	restart_btn.offset_top = -20.0
-	restart_btn.offset_right = 80.0
-	restart_btn.offset_bottom = 20.0
+	restart_btn.position = Vector2(600, 340)
+	restart_btn.size = Vector2(160, 44)
 	add_child(restart_btn)
 	restart_btn.pressed.connect(func(): restart_requested.emit())
 
@@ -136,7 +126,7 @@ func update_state(battle) -> void:
 	var turn_text := actor.display_name if actor != null else "——"
 	var hint := ""
 	if actor == battle.player:
-		hint = "\n▶ 轮到你：点「攻击」再选部位（可勾选「融入规则」），或防御 / 吃止血丹"
+		hint = "\n▶ 轮到你：点棋盘空格移动（剩%d步）→ 点「攻击」选部位（可勾选「融入规则」）→ 防御/丹药/结束" % actor.move_left
 	info_label.text = "【你】%s\n【对手】%s\n当前行动：%s%s" % [
 		_unit_line(battle.player),
 		_unit_line(battle.opponent),
@@ -156,11 +146,24 @@ func _unit_line(u: Unit) -> String:
 		int(ResourceSystem.current(u, "魂力")), int(u.pools["魂力"].max),
 		u.armor, int(u.items.get("止血丹", 0)),
 	]
+	# 功法修为称号（英雄坛说四字量表）
+	if u.technique != null and u.technique_proficiency.has(u.technique.id):
+		var prof: float = u.technique_proficiency[u.technique.id]
+		s += " | 修为「%s」" % Grades.title(prof)
+	# 规则领悟（称号+粗分阶）
+	var rl: Array[String] = []
+	for rule in u.rules:
+		var val: float = u.rules[rule]
+		rl.append("%s·%s(%s)" % [rule, Grades.title(val), Grades.tier_name(val)])
+	if not rl.is_empty():
+		s += "\n领悟: " + " ".join(rl)
+	# 部位状态
 	var parts: Array[String] = []
 	for part in u.body:
 		var pd: Dictionary = u.body[part]
 		parts.append("%s[%s%s]" % [part, BodySystem.STATE_NAMES[pd.state], "·流血" if pd.bleeding else ""])
 	s += "\n部位: " + " ".join(parts)
+	# 状态
 	var st: Array[String] = []
 	for id in u.statuses:
 		st.append("%s(%ds)" % [id, int(u.statuses[id].duration)])
@@ -169,6 +172,13 @@ func _unit_line(u: Unit) -> String:
 	if u.is_defending:
 		s += " | 防御架势"
 	return s
+
+
+## 解说输出（带颜色）
+func log_nar(text: String, color: Color) -> void:
+	log_rtl.push_color(color)
+	log_rtl.append_text(text + "\n")
+	log_rtl.pop()
 
 
 func log(text: String) -> void:

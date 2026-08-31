@@ -10,6 +10,8 @@ extends Resource
 @export var cost_pool: String = "体力"          # 主消耗池
 @export var cost_amount: float = 5.0
 @export var speed_bonus: float = 0.0           # 招法速度加成（《战斗系统》§4）
+@export var range_min: int = 1                 # 招式射程（切比雪夫距离）：兵器1-1近身，玄术远程
+@export var range_max: int = 1
 @export_multiline var core_loop: String = ""   # 机制描述（机制脚本后置）
 @export var target_parts: PackedStringArray = []  # 部位倾向
 @export var rule_slots: PackedStringArray = []    # 规则融入槽（可融入哪些法则）
