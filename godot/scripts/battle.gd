@@ -20,8 +20,14 @@ var current_actor: Unit = null
 var battle_over := false
 var hud: BattleHud
 
+# 截图调试模式：命令行加 -- --shot，每秒存一张图到 _debug/，6 张后自动退出
+var _shot_mode := false
+var _shot_elapsed := 0.0
+var _shot_count := 0
+
 
 func _ready() -> void:
+	_shot_mode = "--shot" in OS.get_cmdline_user_args()
 	randomize()
 	player = UnitSystem.spawn({
 		"id": "player", "display_name": "你", "team": 0, "realm": "金丹",
@@ -57,6 +63,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if _shot_mode:
+		_take_debug_shots(delta)
 	if battle_over:
 		return
 	StatusSystem.tick(delta)
@@ -287,6 +295,24 @@ func _bleeding(u: Unit) -> bool:
 func log_msg(text: String) -> void:
 	if hud != null:
 		hud.log(text)
+
+
+func _take_debug_shots(delta: float) -> void:
+	_shot_elapsed += delta
+	if _shot_elapsed < float(_shot_count + 1):
+		return
+	_shot_count += 1
+	var img := get_viewport().get_texture().get_image()
+	DirAccess.make_dir_recursive_absolute("res://_debug")
+	img.save_png("res://_debug/shot_%d.png" % _shot_count)
+	print("DEBUG shot %d saved (actor=%s)" % [_shot_count, current_actor.display_name if current_actor != null else "none"])
+	if _shot_count == 1:
+		print("DEBUG viewport=", get_viewport().get_visible_rect())
+		print("DEBUG hud rect=", hud.get_rect(), " global=", hud.global_position)
+		for child in [hud.info_label, hud.log_rtl, hud.part_row, hud.action_row]:
+			print("DEBUG child ", child.name, " rect=", child.get_rect(), " global_pos=", child.global_position, " visible=", child.visible)
+	if _shot_count >= 6:
+		get_tree().quit()
 
 
 # ---------- 表现层绘制 ----------

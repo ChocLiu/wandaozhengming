@@ -14,3 +14,6 @@ desktop.ini
 
 # 本地草稿（不删文件，只建草稿目录）
 _drafts/
+
+# 调试截图
+godot/_debug/

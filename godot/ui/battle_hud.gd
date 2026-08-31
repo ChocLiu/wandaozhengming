@@ -20,7 +20,11 @@ var _action_buttons: Array[Button] = []
 
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# 根控件显式固定尺寸（P0 固定分辨率 1280x720）：
+	# 锚点预设对 Node2D 下的根 Control 在 _ready 时机不生效（实测 rect 为 0），
+	# 子控件锚点是相对本控件计算的，根没尺寸 → 子控件全跑到屏幕外。
+	offset_right = 1280.0
+	offset_bottom = 720.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # 根节点不挡输入，子控件各自接收
 
 	info_label = Label.new()
