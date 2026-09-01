@@ -15,5 +15,5 @@ range_max = 1
 area_pattern = "单体"
 cooldown = 0
 power_mod = 1.0
-target_parts = PackedStringArray("咽喉", "手")
+target_parts = PackedStringArray("咽喉", "手腕")
 effects = PackedStringArray()

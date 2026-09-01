@@ -10,27 +10,27 @@ const STATE_NAMES := ["完好", "轻伤", "重伤", "毁"]
 ## 境界 → 部位结构。P0 只做 凡人/练气/金丹 三层（路线图 P0 范围），化神+ 后置。
 const REALM_BODIES := {
 	"凡人": {
-		"大脑": {"vital": true},
-		"心脏": {"vital": true},
-		"大动脉": {"vital": true},
-		"躯干": {"vital": false},
-		"四肢": {"vital": false},
+		"头部": {"vital": true},
+		"心脉": {"vital": true},
+		"命脉": {"vital": true},
+		"胸腹": {"vital": false},
+		"手足": {"vital": false},
 	},
 	"练气": {
-		"大脑": {"vital": true},
-		"心脏": {"vital": true},
+		"头部": {"vital": true},
+		"心脉": {"vital": true},
 		"丹田气海": {"vital": true},   # 气海可破=修为尽废
 		"经脉": {"vital": false},      # 经脉可截=运转受阻(机制后置)
-		"躯干": {"vital": false},
-		"四肢": {"vital": false},
+		"胸腹": {"vital": false},
+		"手足": {"vital": false},
 	},
 	"金丹": {
-		"大脑": {"vital": true},
-		"心脏": {"vital": true},
+		"头部": {"vital": true},
+		"心脉": {"vital": true},
 		"丹田": {"vital": true},       # 金丹所在——金丹碎=道基尽毁
 		"眉心神识": {"vital": true},   # 识海
-		"躯干": {"vital": false},
-		"四肢": {"vital": false},
+		"胸腹": {"vital": false},
+		"手足": {"vital": false},
 	},
 }
 

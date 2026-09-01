@@ -15,5 +15,5 @@ range_max = 3
 area_pattern = "溅射"
 cooldown = 2
 power_mod = 1.6
-target_parts = PackedStringArray("躯干")
+target_parts = PackedStringArray("胸腹")
 effects = PackedStringArray("灼烧")

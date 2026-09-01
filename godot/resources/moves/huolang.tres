@@ -15,5 +15,5 @@ range_max = 3
 area_pattern = "直线"
 cooldown = 0
 power_mod = 1.0
-target_parts = PackedStringArray("躯干", "四肢")
+target_parts = PackedStringArray("胸腹", "手足")
 effects = PackedStringArray("灼烧")

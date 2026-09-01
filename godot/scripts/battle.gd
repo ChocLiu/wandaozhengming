@@ -599,7 +599,7 @@ func _random_part(u: Unit) -> String:
 		if u.body[part].state != BodySystem.PartState.DESTROYED:
 			parts.append(part)
 	if parts.is_empty():
-		return "躯干"
+		return "胸腹"
 	return parts[randi() % parts.size()]
 
 
