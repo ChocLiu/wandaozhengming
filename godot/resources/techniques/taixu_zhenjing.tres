@@ -10,6 +10,7 @@ daoxi = "阵道"
 category = "玄术"
 moves = []
 weapon_req = "空手"
+arm_usage = "副手结印"
 core_loop = "布阵图节点于场地，敌人踏入触发连锁（P0：未进战斗演示，占位数据）"
 target_parts = PackedStringArray("胸腹")
 rule_slots = PackedStringArray("空间")

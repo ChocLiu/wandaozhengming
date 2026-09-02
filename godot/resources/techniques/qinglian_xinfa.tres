@@ -10,6 +10,7 @@ daoxi = "剑道"
 category = "心法"
 moves = []
 weapon_req = "空手"
+arm_usage = "无"
 core_loop = "温养剑元，绵长气力——主修心法（P0：仅属性加成，心法机制后置）"
 target_parts = PackedStringArray()
 rule_slots = PackedStringArray()

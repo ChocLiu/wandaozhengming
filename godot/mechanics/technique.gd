@@ -10,6 +10,7 @@ extends Resource
 @export var category: String = ""              # 挂载类别：玄术/心法/兵器/拳脚/身法/招架/神魂/肉身
 @export var moves: Array[Move] = []            # 招式池（普攻随机与手动选招的来源）
 @export var weapon_req: String = "空手"        # 所需武器（兵器功法），切换时自动换装
+@export var arm_usage: String = "单臂持械"     # 手臂依赖（§2.5 部位伤效）：单臂持械/双臂持械/双拳/副手结印/副手护身/身法借力/无
 @export_multiline var core_loop: String = ""   # 机制描述（机制脚本后置）
 @export var target_parts: PackedStringArray = []  # 部位倾向（招式未指定时的兜底）
 @export var rule_slots: PackedStringArray = []    # 规则融入槽（可融入哪些法则）

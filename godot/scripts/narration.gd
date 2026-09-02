@@ -35,13 +35,52 @@ static func attack_vital(attacker, target, part: String) -> Dictionary:
 	return {"t": v % [target.display_name, part], "c": C_DEATH}
 
 
-static func parry(attacker, target) -> Dictionary:
+## ①层闪避（速度对抗胜——被动常驻层，无代价）
+static func dodge(target, attacker) -> Dictionary:
 	var v := pick([
-		"%s侧身格挡，堪堪架住%s的攻势",
-		"%s早有防备，格开了%s这一击",
 		"千钧一发，%s堪堪闪开%s的杀招",
+		"%s身形一晃，躲过%s这一击",
 	])
 	return {"t": v % [target.display_name, attacker.display_name], "c": C_PARRY}
+
+
+## ②层招架（守势覆盖/招架架势——兵刃格挡）
+static func parry_success(target, attacker) -> Dictionary:
+	var v := pick([
+		"%s兵刃一横，稳稳架住%s的攻势！",
+		"%s看破%s来路，格挡于守势之内！",
+	])
+	return {"t": v % [target.display_name, attacker.display_name], "c": C_PARRY}
+
+
+static func parry_broken(target, attacker) -> Dictionary:
+	var v := pick([
+		"%s的格挡被%s硬生生荡开——破格挡！",
+		"%s力量更胜一筹，%s的兵刃挡不住，防线被破！",
+	])
+	return {"t": v % [target.display_name, attacker.display_name], "c": C_HIT}
+
+
+static func parry_disarm(target, attacker) -> Dictionary:
+	return {"t": "%s兵刃脱手飞出！%s仓皇失色" % [target.display_name, attacker.display_name], "c": C_HIT}
+
+
+## 战力差距阶梯（差一阶招架必破——守势形同虚设）
+static func crush_guard(attacker, target) -> Dictionary:
+	return {"t": "%s的境界压制之下，%s的格挡如同虚设！" % [attacker.display_name, target.display_name], "c": C_RULE}
+
+
+## ③层代受（要害被破前，用非致命部位换命）
+static func substitute(target, part: String, sub: String) -> Dictionary:
+	var v := pick([
+		"%s来不及回防——「%s」一横，代受了攻向「%s」的杀招！",
+		"电光石火间，%s以「%s」挡下了攻向「%s」的一击！",
+	])
+	return {"t": v % [target.display_name, sub, part], "c": C_WEAR}
+
+
+static func substitute_fail(attacker, target, part: String) -> Dictionary:
+	return {"t": "%s攻势太快，%s来不及代受——「%s」直接暴露！" % [attacker.display_name, target.display_name, part], "c": C_HIT}
 
 
 static func wear(attacker, target) -> Dictionary:
@@ -96,12 +135,21 @@ static func bleed_tick(u) -> Dictionary:
 	return {"t": v % [u.display_name], "c": C_WEAR}
 
 
-static func defend(u) -> Dictionary:
+## 守势宣言（§5.1.2）
+static func guard_declared(u, parts: String, stance_name: String) -> Dictionary:
 	var v := pick([
-		"%s沉腰立马，摆出防御架势",
-		"%s护住周身要害，严阵以待",
+		"%s护住「%s」，摆开%s架势",
+		"%s收摄心神——「%s」已在%s架势笼罩之下",
 	])
-	return {"t": v % u.display_name, "c": C_INFO}
+	return {"t": v % [u.display_name, parts, stance_name], "c": C_INFO}
+
+
+static func guard_initial(u) -> Dictionary:
+	return {"t": "双方对峙，%s先护住周身要害，摆开招架架势" % u.display_name, "c": C_INFO}
+
+
+static func no_guard_parts() -> Dictionary:
+	return {"t": "至少选一个重点保护部位（点自己的部位按钮）", "c": C_INFO}
 
 
 static func seal(u) -> Dictionary:
@@ -133,7 +181,8 @@ static func out_of_range(steps: int) -> Dictionary:
 
 
 static func no_stamina(attacker, pool: String, move) -> Dictionary:
-	return {"t": "%s的%s不足，「%s」发不出去" % [attacker.display_name, pool, move.display_name], "c": C_INFO}
+	var what: String = move.display_name if move != null else "这一招"
+	return {"t": "%s的%s不足，「%s」发不出去" % [attacker.display_name, pool, what], "c": C_INFO}
 
 
 static func switch_tech(u, tech, weapon: String) -> Dictionary:
@@ -158,6 +207,23 @@ static func no_switch() -> Dictionary:
 
 static func acted_already(u) -> Dictionary:
 	return {"t": "%s本回合已出过手" % u.display_name, "c": C_INFO}
+
+
+## 部位伤效（§2.5）
+static func arm_disabled(u, move) -> Dictionary:
+	return {"t": "%s的手臂已废，「%s」施展不出" % [u.display_name, move.display_name], "c": C_INFO}
+
+
+static func switch_hand(u) -> Dictionary:
+	return {"t": "%s主臂已废，咬牙换用%s！" % [u.display_name, u.main_arm], "c": C_INFO}
+
+
+static func legs_destroyed(u) -> Dictionary:
+	return {"t": "%s双腿已废，寸步难行！" % u.display_name, "c": C_INFO}
+
+
+static func pickup_weapon(u) -> Dictionary:
+	return {"t": "%s慌忙拾回兵刃" % u.display_name, "c": C_INFO}
 
 
 static func proficiency_up(attacker, tech, title: String) -> Dictionary:

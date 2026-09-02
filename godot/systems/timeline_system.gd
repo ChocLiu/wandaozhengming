@@ -38,9 +38,16 @@ func process_timeline(delta: float) -> void:
 			unit_ready.emit(u)
 
 
-## 行动结算完毕后调用：清条、解除防御架势、恢复读条
+## 行动结算完毕后调用：清条、恢复读条
+## 注：守势（stance/guard_parts）保持到主动更改，不在此清除（《战斗系统》§5.1.2）
 func begin_turn(u: Unit) -> void:
 	u.atb_progress = 0.0
-	u.is_defending = false
 	pending.erase(u)
+	active = true
+
+
+## 战斗重开时清场：autoload 跨场景残留状态（重载场景后必须调用，否则时序冻结）
+func reset_all() -> void:
+	registered.clear()
+	pending.clear()
 	active = true

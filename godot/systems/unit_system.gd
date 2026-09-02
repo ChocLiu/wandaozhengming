@@ -18,6 +18,13 @@ func remove_unit(u: Unit) -> void:
 	TimelineSystem.unregister(u)
 
 
+## 战斗重开时清场（autoload 跨场景残留）
+func reset_all() -> void:
+	for u in units:
+		TimelineSystem.unregister(u)
+	units.clear()
+
+
 func get_opponents(team: int) -> Array[Unit]:
 	var result: Array[Unit] = []
 	for u in units:

@@ -14,6 +14,7 @@ extends Resource
 @export var range_max: int = 1
 @export var area_pattern: String = "单体"  # 单体/直线/扇形/溅射（图案为数据位，P0.5 只结算单体）
 @export var cooldown: int = 0              # 冷却回合数（0 = 每回合可用）
+@export var arms_required: int = 1         # 需手臂（§2.5）：0=心念发动 / 1=单臂 / 2=双臂——臂毁则禁用
 @export var power_mod: float = 1.0         # 攻击力修正（破防对比用）
 @export var target_parts: PackedStringArray = []
 @export var effects: PackedStringArray = []  # 机制标签：灼烧/麻痹/破防+ 等

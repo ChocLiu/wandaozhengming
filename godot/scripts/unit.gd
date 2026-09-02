@@ -18,12 +18,13 @@ var base_move_speed: float = 55.0     # 基础移动能力（步数额度）
 var base_attack_power: float = 20.0
 var base_armor: float = 15.0
 var base_pool_max: Dictionary = {}    # {"气血": 100.0, ...}——挂载前快照
-# —— 有效面板（= 基础 + 挂载 + 武器）——
+# —— 有效面板（= 基础 + 挂载 + 武器，再乘部位伤效修正——由 battle._recalc_stats 维护）——
 var speed: float = 60.0               # 移速（读条速度）
-var agility: float = 40.0             # 敏捷
+var agility: float = 40.0             # 敏捷（身法——伤效乘区）
 var move_speed: float = 55.0
-var attack_power: float = 20.0        # 破防模型：攻击力
-var armor: float = 15.0               # 破防模型：防御
+var attack_power: float = 20.0        # 破防模型：攻击力（伤效乘区）
+var armor: float = 15.0               # 破防模型：防御（守势集中按部位修正）
+var parry: float = 10.0               # 武器招架值（§5.1.3——伤效乘区）
 # —— 挂载 ——
 var main_technique: Technique = null          # 主修槽（玄术/心法）——战斗中不可切换
 var move_techniques: Array[Technique] = []    # 招式槽功法——战斗中可切换
@@ -33,8 +34,14 @@ var cooldowns: Dictionary = {}                # 招式id -> 剩余冷却回合
 # —— 其他 ——
 var atb_progress: float = 0.0
 var alive: bool = true
-var is_defending: bool = false        # 本回合招架侧重
-var move_left: int = 0                # 本回合剩余步数
+var move_left: int = 0                # 本回合剩余步数（腿伤修正后）
+# —— 部位伤效 / 守势（v0.3）——
+var main_arm: String = "右臂"         # 主用臂（惯用手）——§2.5 伤效与换手
+var offhand: bool = false             # 已换手（副手生疏：攻击/招架 ×0.8）
+var guard_parts: Array[String] = []   # 守势重点保护部位（§5.1.2——保持到主动更改）
+var stance: String = ""               # 守势架势：招架/闪避/铁壁/""（无守势）
+var weapon_durability: float = 10.0   # 武器耐久（破格挡 -1；归零武器损坏）
+var weapon_disarmed: bool = false     # 武器脱手（下次行动时自动拾回）
 var rules: Dictionary = {}            # 规则领悟值：{"空间": 60.0}——称号/粗分阶见 CultivationGrades
 var technique_proficiency: Dictionary = {}  # 功法修为值：{功法id: 值}
 var dao_proficiency: Dictionary = {}  # 道领悟值（P0 仅显示）

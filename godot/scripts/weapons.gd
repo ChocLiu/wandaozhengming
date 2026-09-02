@@ -3,9 +3,9 @@ class_name Weapons
 ## 平衡参照侠客风云传：拳掌（空手）面板攻击最高但必近身，长兵加射程但面板低。
 
 const DATA := {
-	"空手": {"attack": 12.0, "range_bonus": 0},
-	"剑": {"attack": 10.0, "range_bonus": 0},
-	"枪": {"attack": 6.0, "range_bonus": 1},
+	"空手": {"attack": 12.0, "range_bonus": 0, "parry": 5.0},
+	"剑": {"attack": 10.0, "range_bonus": 0, "parry": 20.0},
+	"枪": {"attack": 6.0, "range_bonus": 1, "parry": 15.0},
 }
 
 
@@ -15,3 +15,7 @@ static func attack(name: String) -> float:
 
 static func range_bonus(name: String) -> int:
 	return DATA.get(name, DATA["空手"]).range_bonus
+
+
+static func parry(name: String) -> float:
+	return DATA.get(name, DATA["空手"]).parry
