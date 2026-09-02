@@ -9,6 +9,13 @@ const Grades := preload("res://scripts/cultivation_grades.gd")
 const Nar := preload("res://scripts/narration.gd")
 const WeaponData := preload("res://scripts/weapons.gd")
 
+# —— 美术成品（art/ 源文件 → godot/assets/ 成品，AI 成分 _ai 后缀留档）——
+const TEX_BG := preload("res://assets/backgrounds/战场棋盘_整屏背景_v1_ai.png")
+const TEX_SPRITES := {
+	"player": preload("res://assets/sprites/玩家_剑修_战斗精灵_v1_ai.png"),
+	"opponent": preload("res://assets/sprites/散修_焚天诀_战斗精灵_v1_ai.png"),
+}
+
 const RULE_INFUSE_COST := 10.0  # 融入规则消耗玄力
 const RULE_CRUSH_BONUS := 80.0  # 规则碾压（粗分阶差≥1）的命中修正
 const RULE_CRUSH_STEP := 1      # 粗分阶差几阶算「碾压」
@@ -875,14 +882,17 @@ func _pixel_to_cell(p: Vector2) -> Vector2i:
 # ---------- 表现层绘制 ----------
 
 func _draw() -> void:
+	# 整屏水墨棋盘背景（1280×720）
+	draw_texture_rect(TEX_BG, Rect2(Vector2.ZERO, Vector2(1280, 720)), false)
+	# 战术网格线（柔和白线，叠在背景之上）
 	for x in range(FieldSystem.GRID_W + 1):
 		draw_line(
 			ORIGIN + Vector2(x * CELL, 0), ORIGIN + Vector2(x * CELL, FieldSystem.GRID_H * CELL),
-			Color(0.32, 0.32, 0.5), 1.0)
+			Color(1.0, 1.0, 1.0, 0.14), 1.0)
 	for y in range(FieldSystem.GRID_H + 1):
 		draw_line(
 			ORIGIN + Vector2(0, y * CELL), ORIGIN + Vector2(CELL * FieldSystem.GRID_W, y * CELL),
-			Color(0.32, 0.32, 0.5), 1.0)
+			Color(1.0, 1.0, 1.0, 0.14), 1.0)
 	# 可移动范围高亮（玩家回合；双腿已毁则不可移动）
 	if current_actor == player and not battle_over and BodySystem.leg_penalty(player) != 3:
 		for x in range(FieldSystem.GRID_W):
@@ -902,7 +912,16 @@ func _draw_unit(u: Unit, color: Color) -> void:
 	if u == null:
 		return
 	var top_left := ORIGIN + Vector2(u.pos.x * CELL + 6.0, u.pos.y * CELL + 6.0)
-	draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), color)
+	# 阵营底色（精灵对比度兜底）
+	draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(color, 0.22))
+	# 战斗精灵（等比缩入 48×48 格内）
+	var tex: Texture2D = TEX_SPRITES.get(u.id, null)
+	if tex != null:
+		var ts: Vector2 = tex.get_size()
+		var cell_rect := Rect2(top_left, Vector2(CELL - 12, CELL - 12))
+		var k := minf(cell_rect.size.x / ts.x, cell_rect.size.y / ts.y)
+		var draw_size := ts * k
+		draw_texture_rect(tex, Rect2(cell_rect.get_center() - draw_size / 2.0, draw_size), false)
 	# 当前行动者高亮描边
 	if current_actor == u:
 		draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(1.0, 0.9, 0.3), false, 3.0)

@@ -22,6 +22,19 @@ const Grades := preload("res://scripts/cultivation_grades.gd")
 
 const STANCES := ["招架", "闪避", "铁壁"]
 
+# —— 美术成品（尺寸与 P0 固定布局一一对应：850×170 / 378×628 / 96×36 / 64×64）——
+const TEX_PANEL_INFO := preload("res://assets/ui/UI_信息栏底板_v1_ai.png")
+const TEX_PANEL_LOG := preload("res://assets/ui/UI_解说栏底板_v1_ai.png")
+const TEX_BTN := preload("res://assets/ui/UI_按钮底板_v1_ai.png")
+const TEX_ICONS := {
+	"普攻": preload("res://assets/icons/操作图标_普攻_v1_ai.png"),
+	"招式": preload("res://assets/icons/操作图标_招式_v1_ai.png"),
+	"切换": preload("res://assets/icons/操作图标_切换_v1_ai.png"),
+	"守势": preload("res://assets/icons/操作图标_守势_v1_ai.png"),
+	"丹药": preload("res://assets/icons/操作图标_丹药_v1_ai.png"),
+	"结束": preload("res://assets/icons/操作图标_结束_v1_ai.png"),
+}
+
 var info_label: Label
 var log_rtl: RichTextLabel
 var action_row: HBoxContainer
@@ -46,18 +59,30 @@ func _ready() -> void:
 	offset_bottom = 720.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # 根节点不挡输入，子控件各自接收
 
-	# 左上：单位信息
+	# 左上：单位信息（卷轴底板 + 文字）
+	var info_panel := Panel.new()
+	info_panel.position = Vector2(12, 12)
+	info_panel.size = Vector2(850, 170)
+	info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE  # 底板不挡棋盘点击
+	info_panel.add_theme_stylebox_override("panel", _stylebox(TEX_PANEL_INFO))
+	add_child(info_panel)
 	info_label = Label.new()
-	info_label.position = Vector2(12, 12)
-	info_label.size = Vector2(850, 170)
-	add_child(info_label)
+	info_label.position = Vector2(18, 12)
+	info_label.size = Vector2(816, 146)
+	info_panel.add_child(info_label)
 
-	# 右侧竖排：战斗解说面板（不遮挡棋盘与按钮）
+	# 右侧竖排：战斗解说面板（卷轴底板 + 文字，不遮挡棋盘与按钮）
+	var log_panel := Panel.new()
+	log_panel.position = Vector2(890, 12)
+	log_panel.size = Vector2(378, 628)
+	log_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	log_panel.add_theme_stylebox_override("panel", _stylebox(TEX_PANEL_LOG))
+	add_child(log_panel)
 	log_rtl = RichTextLabel.new()
-	log_rtl.position = Vector2(890, 12)
-	log_rtl.size = Vector2(378, 628)
+	log_rtl.position = Vector2(14, 10)
+	log_rtl.size = Vector2(350, 608)
 	log_rtl.scroll_following = true
-	add_child(log_rtl)
+	log_panel.add_child(log_rtl)
 
 	# 招式面板行（手动选招，带 CD 显示；守势选择时复用为架势按钮）
 	move_row = HBoxContainer.new()
@@ -81,21 +106,27 @@ func _ready() -> void:
 	add_child(action_row)
 
 	var b := _make_button("普攻", func(): attack_pressed.emit())
+	_set_icon(b, "普攻")
 	_action_buttons.append(b)
 	action_row.add_child(b)
 	b = _make_button("招式", func(): move_menu_pressed.emit())
+	_set_icon(b, "招式")
 	_action_buttons.append(b)
 	action_row.add_child(b)
 	switch_btn = _make_button("切换", func(): switch_pressed.emit())
+	_set_icon(switch_btn, "切换")
 	_action_buttons.append(switch_btn)
 	action_row.add_child(switch_btn)
 	guard_btn = _make_button("守势", func(): guard_pressed.emit())
+	_set_icon(guard_btn, "守势")
 	_action_buttons.append(guard_btn)
 	action_row.add_child(guard_btn)
 	item_btn = _make_button("丹药·止血", func(): item_pressed.emit())
+	_set_icon(item_btn, "丹药")
 	_action_buttons.append(item_btn)
 	action_row.add_child(item_btn)
 	b = _make_button("结束行动", func(): end_turn_pressed.emit())
+	_set_icon(b, "结束")
 	_action_buttons.append(b)
 	action_row.add_child(b)
 
@@ -119,7 +150,28 @@ func _make_button(text: String, on_pressed: Callable) -> Button:
 	b.text = text
 	b.custom_minimum_size = Vector2(96, 36)
 	b.pressed.connect(on_pressed)
+	# 卷轴质感按钮底板（96×36 与按钮同尺寸）
+	var sb := _stylebox(TEX_BTN)
+	b.add_theme_stylebox_override("normal", sb)
+	b.add_theme_stylebox_override("hover", sb)
+	b.add_theme_stylebox_override("disabled", sb)
 	return b
+
+
+func _stylebox(tex: Texture2D) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = tex
+	return sb
+
+
+## 操作按钮图标（64×64 源图在加载时缩至 24px——Button 图标按自然尺寸显示，不缩放会撑高按钮行）
+func _set_icon(b: Button, key: String) -> void:
+	var tex: Texture2D = TEX_ICONS.get(key, null)
+	if tex == null:
+		return
+	var img := tex.get_image()
+	img.resize(24, 24, Image.INTERPOLATE_LANCZOS)
+	b.icon = ImageTexture.create_from_image(img)
 
 
 func enable_actions(enabled: bool) -> void:
