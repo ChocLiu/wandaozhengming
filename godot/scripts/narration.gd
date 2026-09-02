@@ -39,7 +39,7 @@ static func parry(attacker, target) -> Dictionary:
 	var v := pick([
 		"%s侧身格挡，堪堪架住%s的攻势",
 		"%s早有防备，格开了%s这一击",
-		"千钧一发，%s横身闪避，躲了过去",
+		"千钧一发，%s堪堪闪开%s的杀招",
 	])
 	return {"t": v % [target.display_name, attacker.display_name], "c": C_PARRY}
 
@@ -65,9 +65,9 @@ static func no_damage(attacker, target) -> Dictionary:
 static func rule_crush(attacker, rule: String, tier_name: String) -> Dictionary:
 	var v := pick([
 		"这一击分明慢了半息，却像早已写在对方身上——%s之道·%s，避无可避！",
-		"%s规则展开——速度已成虚妄，这一击注定命中！",
+		"%s规则展开（%s）——速度已成虚妄，这一击注定命中！",
 	])
-	return {"t": v % [rule, tier_name, rule], "c": C_RULE}
+	return {"t": v % [rule, tier_name], "c": C_RULE}
 
 
 static func rule_fail(attacker, rule: String) -> Dictionary:
@@ -139,7 +139,7 @@ static func no_stamina(attacker, pool: String, move) -> Dictionary:
 static func switch_tech(u, tech, weapon: String) -> Dictionary:
 	var v := pick([
 		"%s手法一变——换使《%s》（%s在手）！",
-		"%s收了旧势，改走《%s》的路数！",
+		"%s收了旧势，改走《%s》的路数（%s在手）！",
 	])
 	return {"t": v % [u.display_name, tech.display_name, weapon], "c": C_INFO}
 
