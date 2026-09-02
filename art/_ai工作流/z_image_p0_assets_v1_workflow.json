@@ -1,0 +1,1322 @@
+{
+  "board": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Top-down aerial view of a 10x10 grid battlefield board for a Chinese ink-wash xianxia turn-based game, each cell a terrain tile: mountains, pine forest, river, rocks, bamboo and mist, faint subtle grid lines, muted ink brush strokes, aged rice paper texture, no text, no characters, orthographic top-down game asset"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1344,
+        "height": 768,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4001,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_board"
+      }
+    }
+  },
+  "sprite_player": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Full-body character sprite of a young Chinese sword cultivator in white and blue hanfu robes, holding a longsword in one hand, upright standing pose, clean simple silhouette, traditional Chinese ink-wash painting style, game battle asset, isolated on plain solid white background, no text, full body, feet visible"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4002,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_sprite_player"
+      }
+    }
+  },
+  "sprite_enemy": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Full-body character sprite of a wild demonic cultivator in dark red robes with flame motifs, fierce grin, holding a broad dao blade wreathed in embers, standing pose, ink-wash xianxia style, game battle asset, isolated on plain solid white background, no text, full body, feet visible"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4003,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_sprite_enemy"
+      }
+    }
+  },
+  "panel_dialogue": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Ancient Chinese scroll and bamboo-slip UI panel, empty ornate vertical frame, ink-wash style, decorative carved cloud ornaments in four corners, plain blank paper center for text, game UI element, isolated on plain solid white background, no text"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4004,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_panel_dialogue"
+      }
+    }
+  },
+  "panel_info": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Ancient Chinese scroll banner, long horizontal empty ornate frame, ink-wash style, scroll-roll ends, plain empty parchment center, decorative carved corners xianxia game UI element, isolated on plain solid white background, no text"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1152,
+        "height": 256,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4005,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_panel_info"
+      }
+    }
+  },
+  "panel_button": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Ancient Chinese ornament button, small horizontal rectangular jade tablet with cloud-carved corners, parchment texture, empty center, ink-wash style, game UI element, isolated on plain solid white background, no text"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 512,
+        "height": 192,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4006,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_panel_button"
+      }
+    }
+  },
+  "icon_attack": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Minimalist Chinese ink line icon of a sword slashing downward, simple bold brush strokes, game UI icon, centered, isolated on plain solid white background, no text, no shading"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4011,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_icon_attack"
+      }
+    }
+  },
+  "icon_skill": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Minimalist Chinese ink line icon of a blooming lotus flower, simple bold brush strokes, game UI icon, centered, isolated on plain solid white background, no text, no shading"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4012,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_icon_skill"
+      }
+    }
+  },
+  "icon_switch": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Minimalist Chinese ink line icon of two curved arrows forming a circular exchange, simple bold brush strokes, game UI icon, centered, isolated on plain solid white background, no text, no shading"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4013,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_icon_switch"
+      }
+    }
+  },
+  "icon_guard": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Minimalist Chinese ink line icon of a round shield with a sword behind it, simple bold brush strokes, game UI icon, centered, isolated on plain solid white background, no text, no shading"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4014,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_icon_guard"
+      }
+    }
+  },
+  "icon_pill": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Minimalist Chinese ink line icon of a small round medicine pill bottle, simple bold brush strokes, game UI icon, centered, isolated on plain solid white background, no text, no shading"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4015,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_icon_pill"
+      }
+    }
+  },
+  "icon_end": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Minimalist Chinese ink line icon of a square stop symbol inside a circle, simple bold brush strokes, game UI icon, centered, isolated on plain solid white background, no text, no shading"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 4016,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_icon_end"
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+提示词: Top-down aerial view of a 10x10 grid battlefield board for a Chinese ink-wash xianxia turn-based game, each cell a terrain tile: mountains, pine forest, river, rocks, bamboo and mist, faint subtle grid lines, muted ink brush strokes, aged rice paper texture, no text, no characters, orthographic top-down game asset
+模型: Z-Image Turbo NVFP4（z_image_turbo_nvfp4 + qwen_3_4b_fp4_mixed + ae, 8 步 cfg1 res_multistep simple, ModelSamplingAuraFlow shift=3）
+后处理: 1344×768→1280×720，棋盘区叠 10×10 格线
