@@ -235,8 +235,8 @@ def main():
             finals.append((fit_canvas(cut, 256), "02_角色立绘", SPRITE_BASE[job],
                            "rembg 去底，等比缩放至 256×256 透明画布", job))
         elif job == "panel_button":
-            finals.append((fit_canvas(cut, 96), "04_UI界面", PANEL_BASE[job],
-                           "rembg 去底，等比缩放至 96×36 透明画布（源 8:3 与成品一致，无拉伸）", job))
+            finals.append((cut.resize((96, 36), Image.LANCZOS), "04_UI界面", PANEL_BASE[job],
+                           "rembg 去底，等比缩放至 96×36（源 8:3 与成品一致，无拉伸）", job))
         else:
             w, h, corner = panel_spec[job]
             finals.append((nine_slice(cut, w, h, corner), "04_UI界面", PANEL_BASE[job],
