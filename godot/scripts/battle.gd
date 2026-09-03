@@ -10,9 +10,10 @@ const Nar := preload("res://scripts/narration.gd")
 const WeaponData := preload("res://scripts/weapons.gd")
 
 # —— 美术成品（art/ 源文件 → godot/assets/ 成品，AI 成分 _ai 后缀留档）——
-const TEX_BG := preload("res://assets/backgrounds/战场棋盘_整屏背景_v1_ai.png")
+const TEX_BG := preload("res://assets/backgrounds/战场棋盘_整屏背景_v2_ai.png")       # 1280×720 氛围层
+const TEX_BOARD := preload("res://assets/backgrounds/战场棋盘_战斗背景_v2_ai.png")    # 600×600 棋盘底图
 const TEX_SPRITES := {
-	"player": preload("res://assets/sprites/玩家_剑修_战斗精灵_v1_ai.png"),
+	"player": preload("res://assets/sprites/玩家_女剑修_战斗精灵_v1_ai.png"),
 	"opponent": preload("res://assets/sprites/散修_焚天诀_战斗精灵_v1_ai.png"),
 }
 
@@ -883,10 +884,12 @@ func _pixel_to_cell(p: Vector2) -> Vector2i:
 # ---------- 表现层绘制 ----------
 
 func _draw() -> void:
-	# 整屏水墨背景（氛围层）→ 纸色遮罩压淡（背景画与逻辑棋盘不对齐，只作氛围——布局 v0.4）
+	# 整屏水墨背景（氛围层）→ 纸色遮罩压淡（布局 v0.4）
 	draw_texture_rect(TEX_BG, Rect2(Vector2.ZERO, Vector2(1280, 720)), false)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), Color(0.96, 0.93, 0.86, 0.5))
-	# 战术网格线（柔和白线，逻辑棋盘以网格线为准）
+	# 棋盘底图（600×600 精确对齐逻辑棋盘——不压淡，是主战场面）
+	draw_texture_rect(TEX_BOARD, Rect2(ORIGIN, Vector2(FieldSystem.GRID_W * CELL, FieldSystem.GRID_H * CELL)), false)
+	# 战术网格线（墨线叠在棋盘底图上，逻辑格以网格线为准）
 	for x in range(FieldSystem.GRID_W + 1):
 		draw_line(
 			ORIGIN + Vector2(x * CELL, 0), ORIGIN + Vector2(x * CELL, FieldSystem.GRID_H * CELL),

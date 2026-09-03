@@ -25,8 +25,9 @@ const STANCES := ["招架", "闪避", "铁壁"]
 const INK := Color(0.14, 0.12, 0.09)       # 浓墨（纸面 UI 主文字色）
 const INK_DIM := Color(0.45, 0.43, 0.4)    # 淡墨（禁用文字）
 
-# —— 美术成品（布局 v0.4：右侧大解说栏 632×420、按钮底板 96×36、图标 64×64；信息条为纯文字缩略）——
-const TEX_PANEL_LOG := preload("res://assets/ui/UI_解说栏底板_v1_ai.png")
+# —— 美术成品（布局 v0.4 精确尺寸：信息横条 1256×56、解说栏 632×420、按钮底板 96×36、图标 64×64）——
+const TEX_PANEL_INFO := preload("res://assets/ui/UI_信息栏底板_v2_ai.png")
+const TEX_PANEL_LOG := preload("res://assets/ui/UI_解说栏底板_v2_ai.png")
 const TEX_BTN := preload("res://assets/ui/UI_按钮底板_v1_ai.png")
 const TEX_ICONS := {
 	"普攻": preload("res://assets/icons/操作图标_普攻_v1_ai.png"),
@@ -61,13 +62,19 @@ func _ready() -> void:
 	offset_bottom = 720.0
 	mouse_filter = Control.MOUSE_FILTER_IGNORE  # 根节点不挡输入，子控件各自接收
 
-	# 顶部：双方信息缩略条（3 行纯文字——背景画无文字框，信息条自成一体）
+	# 顶部：双方信息缩略条（1256×56 卷轴横条 + 三行墨字）
+	var info_panel := Panel.new()
+	info_panel.position = Vector2(12, 6)
+	info_panel.size = Vector2(1256, 56)
+	info_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_panel.add_theme_stylebox_override("panel", _stylebox(TEX_PANEL_INFO))
+	add_child(info_panel)
 	info_label = Label.new()
-	info_label.position = Vector2(12, 6)
-	info_label.size = Vector2(1256, 56)
+	info_label.position = Vector2(22, 8)
+	info_label.size = Vector2(1214, 44)
 	info_label.add_theme_font_size_override("font_size", 12)
 	info_label.add_theme_color_override("font_color", INK)
-	add_child(info_label)
+	info_panel.add_child(info_label)
 
 	# 右侧：战斗解说面板（加宽 632×420；底板纹理等比拉伸——后续可重出此尺寸底图）
 	var log_panel := Panel.new()

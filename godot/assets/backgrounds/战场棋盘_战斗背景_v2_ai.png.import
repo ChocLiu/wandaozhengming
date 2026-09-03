@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bxe3tw7m35o66"
-path="res://.godot/imported/UI_解说栏底板_v1_ai.png-45125922c59cda735bb8ace04697b559.ctex"
+uid="uid://bcquhptlrasld"
+path="res://.godot/imported/战场棋盘_战斗背景_v2_ai.png-3a76385a121384adcbe4db4ac10c9017.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/UI_解说栏底板_v1_ai.png"
-dest_files=["res://.godot/imported/UI_解说栏底板_v1_ai.png-45125922c59cda735bb8ace04697b559.ctex"]
+source_file="res://assets/backgrounds/战场棋盘_战斗背景_v2_ai.png"
+dest_files=["res://.godot/imported/战场棋盘_战斗背景_v2_ai.png-3a76385a121384adcbe4db4ac10c9017.ctex"]
 
 [params]
 
