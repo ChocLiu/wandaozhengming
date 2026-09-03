@@ -24,6 +24,8 @@ const STANCES := ["招架", "闪避", "铁壁"]
 
 const INK := Color(0.14, 0.12, 0.09)       # 浓墨（纸面 UI 主文字色）
 const INK_DIM := Color(0.45, 0.43, 0.4)    # 淡墨（禁用文字）
+## 面板图排版统一规范（2026-09-02 定）：左右各 5% 宽度为卷轴轴头/花边区，内容安全区 = 中央 90%
+const PANEL_SIDE_RATIO := 0.05
 
 # —— 美术成品（布局 v0.4 精确尺寸：信息横条 1256×56、解说栏 632×420、按钮底板 96×36、图标 64×64）——
 const TEX_PANEL_INFO := preload("res://assets/ui/UI_信息栏底板_v2_ai.png")
@@ -70,8 +72,9 @@ func _ready() -> void:
 	info_panel.add_theme_stylebox_override("panel", _stylebox(TEX_PANEL_INFO))
 	add_child(info_panel)
 	info_label = Label.new()
-	info_label.position = Vector2(22, 8)
-	info_label.size = Vector2(1214, 44)
+	# 内容缩进：左右各 5%（1256×0.05≈63）——卷轴轴头区不放内容
+	info_label.position = Vector2(63.0, 8)
+	info_label.size = Vector2(1130, 44)
 	info_label.add_theme_font_size_override("font_size", 12)
 	info_label.add_theme_color_override("font_color", INK)
 	info_panel.add_child(info_label)
@@ -84,8 +87,9 @@ func _ready() -> void:
 	log_panel.add_theme_stylebox_override("panel", _stylebox(TEX_PANEL_LOG))
 	add_child(log_panel)
 	log_rtl = RichTextLabel.new()
-	log_rtl.position = Vector2(16, 12)
-	log_rtl.size = Vector2(600, 396)
+	# 内容缩进：左右各 5%（632×0.05≈32）——卷轴轴头区不放内容
+	log_rtl.position = Vector2(32.0, 14)
+	log_rtl.size = Vector2(568, 392)
 	log_rtl.scroll_following = true
 	log_rtl.add_theme_color_override("default_color", INK)
 	log_rtl.add_theme_font_size_override("normal_font_size", 13)
@@ -159,7 +163,10 @@ func _make_button(text: String, on_pressed: Callable) -> Button:
 	b.custom_minimum_size = Vector2(96, 36)
 	b.pressed.connect(on_pressed)
 	# 卷轴质感按钮底板（96×36 与按钮同尺寸）+ 墨字（纸面 UI）
+	# 内容缩进：左右各 5%（96×0.05≈5）——按钮文字/图标自动让出卷轴轴头区
 	var sb := _stylebox(TEX_BTN)
+	sb.content_margin_left = 5.0
+	sb.content_margin_right = 5.0
 	b.add_theme_stylebox_override("normal", sb)
 	b.add_theme_stylebox_override("hover", sb)
 	b.add_theme_stylebox_override("pressed", sb)
