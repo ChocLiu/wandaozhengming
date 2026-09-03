@@ -34,6 +34,10 @@ const RECIPES := {
 	"错误": {"kind": "chime", "freqs": [200.0], "dur": 0.12, "vol": 0.2, "decay": 5.0, "partials": [1.0, 1.5]},
 	"胜利": {"kind": "chime", "freqs": [523.0], "dur": 0.45, "vol": 0.28, "decay": 3.0, "partials": [1.0, 1.26, 1.5]},
 	"失败": {"kind": "sweep", "freqs": [392.0, 180.0], "dur": 0.5, "vol": 0.28, "decay": 3.0},
+	# —— 剑意机制（《功法系统》§3）——
+	"剑意": {"kind": "chime", "freqs": [880.0], "dur": 0.25, "vol": 0.26, "decay": 4.0, "partials": [1.0, 1.26, 2.0]},
+	"溃散": {"kind": "sweep", "freqs": [700.0, 200.0], "dur": 0.35, "vol": 0.24, "decay": 4.0},
+	"大招": {"kind": "noise", "freqs": [220.0], "dur": 0.4, "vol": 0.34, "decay": 4.0},
 }
 
 var _players: Array[AudioStreamPlayer] = []

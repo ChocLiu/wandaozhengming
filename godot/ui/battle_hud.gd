@@ -22,6 +22,8 @@ const Grades := preload("res://scripts/cultivation_grades.gd")
 
 const STANCES := ["招架", "闪避", "铁壁"]
 
+const INTENT_CN := ["壹", "贰", "叁"]  # 剑意层中文数字（《功法系统》§3）
+
 const INK := Color(0.14, 0.12, 0.09)       # 浓墨（纸面 UI 主文字色）
 const INK_DIM := Color(0.45, 0.43, 0.4)    # 淡墨（禁用文字）
 ## 面板图排版规范（2026-09-02 定）：
@@ -223,9 +225,11 @@ func set_item_used(used: bool) -> void:
 	item_btn.disabled = _item_used or item_btn.disabled
 
 
-## 弹出招式面板（当前激活功法的招式池，带 CD 与臂伤禁用状态）
-func set_moves(unit) -> void:
+## 弹出招式面板：谱招式（move_row）+ 变招/大招（part_row 复用——出招选部位时才用 part_row，两者互不冲突）
+## 未解锁的变招灰显需求说明（剑意层/修为门槛，§3）；battle 提供解锁判定
+func set_moves(unit, battle) -> void:
 	clear_moves()
+	clear_parts()
 	if unit.active_technique == null:
 		return
 	for m in unit.active_technique.moves:
@@ -242,6 +246,28 @@ func set_moves(unit) -> void:
 		var b := _make_button(label, func(): move_selected.emit(mid))
 		b.disabled = cd > 0 or not arm_ok
 		move_row.add_child(b)
+	# 变招/大招（§3：剑意层 + 功法修为解锁）
+	for v in unit.active_technique.variants:
+		var vv: Move = v
+		var cd := int(unit.cooldowns.get(vv.id, 0))
+		var arm_ok: bool = BodySystem.can_use_move(unit, vv)
+		var unlocked: bool = battle.variant_unlocked(unit, vv)
+		var label: String
+		if not unlocked:
+			var note: String = "需剑意%s层" % INTENT_CN[vv.unlock_intent - 1]
+			if vv.unlock_intent <= unit.sword_intent and vv.unlock_proficiency > unit.technique_proficiency.get(unit.active_technique.id, 0.0):
+				note = "需修为「%s」" % Grades.title(vv.unlock_proficiency)
+			label = "%s（%s）" % [vv.display_name, note]
+		elif cd > 0:
+			label = "%s（CD%d）" % [vv.display_name, cd]
+		elif not arm_ok:
+			label = "%s（臂伤）" % vv.display_name
+		else:
+			label = vv.display_name
+		var vid: String = vv.id
+		var vb := _make_button(label, func(): move_selected.emit(vid))
+		vb.disabled = not unlocked or cd > 0 or not arm_ok
+		part_row.add_child(vb)
 
 
 func clear_moves() -> void:
@@ -358,6 +384,9 @@ func _unit_line(u: Unit) -> String:
 		if pd.state != BodySystem.PartState.OK or part == u.main_arm:
 			parts.append("%s%s[%s%s]" % [part, "主" if part == u.main_arm else "", BodySystem.STATE_NAMES[pd.state], "·流血" if pd.bleeding else ""])
 	s += " 部位:%s" % (" ".join(parts) if not parts.is_empty() else "无伤")
+	# 剑意（§3——敌方可见，威慑）
+	if u.sword_intent > 0 and u.active_technique != null and not u.active_technique.variants.is_empty():
+		s += " 剑意:%s层" % INTENT_CN[u.sword_intent - 1]
 	# 守势
 	if u.stance != "":
 		s += " 守势:%s[%s]" % [u.stance, " ".join(u.guard_parts)]

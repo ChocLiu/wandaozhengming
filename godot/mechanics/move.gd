@@ -18,3 +18,6 @@ extends Resource
 @export var power_mod: float = 1.0         # 攻击力修正（破防对比用）
 @export var target_parts: PackedStringArray = []
 @export var effects: PackedStringArray = []  # 机制标签：灼烧/麻痹/破防+ 等
+# —— 变招/大招解锁（剑意机制，《功法系统》§3）：0 = 无门槛 ——
+@export var unlock_intent: int = 0          # 所需剑意层（变招/大招挂于 Technique.variants）
+@export var unlock_proficiency: float = 0.0 # 所需功法修为（修为是机制解锁的挂钩点，§2.1）

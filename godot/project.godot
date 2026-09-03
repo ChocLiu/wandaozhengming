@@ -25,6 +25,7 @@ UnitSystem="*res://systems/unit_system.gd"
 TimelineSystem="*res://systems/timeline_system.gd"
 BodySystem="*res://systems/body_system.gd"
 AudioManager="*res://systems/audio_manager.gd"
+MCPRuntimeServer="*res://addons/godot_mcp_toolkit/runtime/mcp_runtime_server.gd"
 
 [display]
 

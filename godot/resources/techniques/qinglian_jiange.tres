@@ -1,9 +1,12 @@
-[gd_resource type="Resource" script_class="Technique" load_steps=5 format=3]
+[gd_resource type="Resource" script_class="Technique" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://mechanics/technique.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/moves/qishou_liankai.tres" id="2"]
 [ext_resource type="Resource" path="res://resources/moves/lianji_sandie.tres" id="3"]
 [ext_resource type="Resource" path="res://resources/moves/shoushi_zhanyue.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/moves/qinglian_zhakai.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/moves/jianyi_rusi.tres" id="6"]
+[ext_resource type="Resource" path="res://resources/moves/qinglian_nufang.tres" id="7"]
 
 [resource]
 script = ExtResource("1")
@@ -12,8 +15,9 @@ display_name = "青莲剑歌"
 daoxi = "剑道"
 category = "兵器"
 moves = [ExtResource("2"), ExtResource("3"), ExtResource("4")]
+variants = [ExtResource("5"), ExtResource("6"), ExtResource("7")]
 weapon_req = "剑"
-core_loop = "按剑谱顺序出招积累剑意；连击命中解锁变招；谱被打断则剑意溃散（剑意机制脚本后置）"
+core_loop = "按剑谱顺序出招积累剑意；连击命中解锁变招；谱被打断则剑意溃散（v0.4 已实装，数值见《功法系统》§3）"
 target_parts = PackedStringArray("咽喉", "手腕", "胸腹")
 rule_slots = PackedStringArray("空间")
 bonus_attack = 5.0

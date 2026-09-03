@@ -60,12 +60,17 @@ var _guard_pending: Array[String] = []
 var _shot_mode := false
 var _shot_elapsed := 0.0
 var _shot_count := 0
+# 特效截图模式：命令行加 -- --fxshot，有活跃特效(_fx 非空)才拍（每 3 帧一张、10 张退出）——验证程序化特效渲染
+var _shot_fx_mode := false
+var _shot_fx_frame := 0
 # 自对弈模式：命令行加 -- --autoplay，AI 控制双方、战斗结束自动重开（平衡验证/机制长跑）
 var _autoplay := false
 var _auto_restart_left := -1
 # 机制触发统计（自对弈验证：确认各防御层确实在运转，不只是「零报错」）
 var _stat := {}
 var _battle_turns := 0
+# 招式特效（P0 程序化占位——《多媒体资产清单》§1.1；P1 换帧动画只替换 _draw_fx 与素材）
+var _fx: Array[Dictionary] = []  # {kind, t, dur, a: Vector2, b: Vector2, color, text}
 
 
 func _stat_bump(key: String) -> void:
@@ -74,6 +79,7 @@ func _stat_bump(key: String) -> void:
 
 func _ready() -> void:
 	_shot_mode = "--shot" in OS.get_cmdline_user_args()
+	_shot_fx_mode = "--fxshot" in OS.get_cmdline_user_args()
 	_autoplay = "--autoplay" in OS.get_cmdline_user_args()
 	if _autoplay:
 		Engine.time_scale = 4.0  # 自对弈加速（挂机长跑更快出结果）
@@ -117,6 +123,9 @@ func _ready() -> void:
 	player.stance = "招架"
 	opponent.guard_parts = ["头部", "丹田"]
 	opponent.stance = "招架"
+	# 表现层初始化：绘制位置 = 逻辑格中心（移动插值起点）
+	player.render_pos = _cell_center(player.pos)
+	opponent.render_pos = _cell_center(opponent.pos)
 
 	TimelineSystem.unit_ready.connect(_on_unit_ready)
 	hud = BattleHud.new()
@@ -196,7 +205,7 @@ func _mount_bonus(u: Unit, field: String) -> float:
 
 
 func _process(delta: float) -> void:
-	if _shot_mode:
+	if _shot_mode or _shot_fx_mode:
 		_take_debug_shots(delta)
 	if battle_over:
 		# 自对弈：战斗结束 30 帧后自动重开下一场
@@ -212,6 +221,9 @@ func _process(delta: float) -> void:
 		return
 	TimelineSystem.process_timeline(delta)
 	hud.update_state(self)
+	_update_render(player, delta)
+	_update_render(opponent, delta)
+	_update_fx(delta)
 	queue_redraw()
 
 
@@ -317,6 +329,7 @@ func _try_move(u: Unit, cell: Vector2i) -> void:
 	if ResourceSystem.current(u, "体力") < cost:
 		_say(Nar.move_fail(u))
 		return
+	var old_center := _cell_center(u.pos)
 	ResourceSystem.drain(u, "体力", cost)
 	u.pos = cell
 	u.move_left -= dist
@@ -324,6 +337,7 @@ func _try_move(u: Unit, cell: Vector2i) -> void:
 	hud.clear_moves()
 	_say(Nar.move(u, dist))
 	AudioManager.sfx("移动")
+	_spawn_fx("move", old_center, _cell_center(cell))
 	if current_acted and u.move_left <= 0:
 		_say(Nar.turn_auto_end(u))
 		_end_turn(u)
@@ -352,7 +366,7 @@ func _on_move_menu_requested() -> void:
 		if current_acted:
 			_say(Nar.acted_already(player))
 		return
-	hud.set_moves(player)
+	hud.set_moves(player, self)
 
 
 func _on_move_selected(move_id: String) -> void:
@@ -360,6 +374,10 @@ func _on_move_selected(move_id: String) -> void:
 		return
 	var move := _find_move(player, move_id)
 	if move == null:
+		return
+	if move.move_type in ["变招", "大招"] and not variant_unlocked(player, move):
+		_say(Nar.variant_locked(move))
+		hud.clear_moves()
 		return
 	if _move_cd(player, move) > 0:
 		_say(Nar.cd_busy(move))
@@ -458,6 +476,7 @@ func _on_guard_stance_selected(stance: String) -> void:
 		player.move_left = maxi(0, player.move_left - 1)
 	_say(Nar.guard_declared(player, " ".join(_guard_pending), stance))
 	AudioManager.sfx("守势")
+	_spawn_fx("guard", _cell_center(player.pos), _cell_center(player.pos))
 	_guard_selecting = false
 	hud.clear_guard_select()
 
@@ -507,7 +526,7 @@ func _ai_act_async(u: Unit) -> void:
 		_do_item(u)
 	# 3) 在射程内 → 随机出招（英雄坛说式），打空当（§5.1.6）；无招可用（臂废/冷却）则就此结束
 	if not current_acted:
-		var move := _pick_random_move(u)
+		var move := _pick_random_move(u, true)
 		if move != null and _in_range(u, target, move):
 			# AI 融入规则：有融入槽且玄力充足时按概率融入（速度劣势靠规则破局，§4.1）
 			var infuse: bool = (
@@ -530,6 +549,8 @@ func _ai_declare_guard(u: Unit) -> void:
 	u.stance = "招架"
 	u.move_left = maxi(0, u.move_left - 1)
 	_say(Nar.guard_declared(u, " ".join(u.guard_parts), "招架"))
+	AudioManager.sfx("守势")
+	_spawn_fx("guard", _cell_center(u.pos), _cell_center(u.pos))
 
 
 ## AI 观察守势打空当（§5.1.6）：优先未保护的要害 → 未保护部位 → 随机
@@ -558,6 +579,7 @@ func _ai_pick_part(u: Unit, target: Unit) -> String:
 ## 简单贪婪逼近：每步选择切比雪夫距离缩小的相邻格，进入射程即停
 func _ai_move_toward(u: Unit, target: Unit, want_range: int) -> void:
 	var steps := 0
+	var start := _cell_center(u.pos)
 	while steps < u.move_left and _chebyshev(u.pos, target.pos) > want_range:
 		if ResourceSystem.current(u, "体力") < MOVE_STAMINA_COST:
 			break
@@ -579,6 +601,7 @@ func _ai_move_toward(u: Unit, target: Unit, want_range: int) -> void:
 		ResourceSystem.drain(u, "体力", float(steps) * MOVE_STAMINA_COST)
 		_say(Nar.move(u, steps))
 		AudioManager.sfx("移动")
+		_spawn_fx("move", start, _cell_center(u.pos))
 
 
 # ---------- 行动结算：四层防御链（§5.1） ----------
@@ -600,6 +623,11 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 	if not ResourceSystem.spend(attacker, move.cost_pool, move.cost_amount):
 		_say(Nar.no_stamina(attacker, move.cost_pool, move))
 		return
+	# 大招：出招即倾尽剑意（代价前置——无论命中与否，§3）
+	if move.move_type == "大招":
+		attacker.sword_intent = 0
+		_say(Nar.ultimate_drain(attacker, move))
+		AudioManager.sfx("大招")
 	# —— 速度维度（《战斗系统》§4）：移速+敏捷+招式加成 ——
 	var atk_speed: float = (
 		(attacker.speed + attacker.agility + move.speed_bonus)
@@ -633,6 +661,8 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 	if total_atk <= def_speed:
 		_say(Nar.dodge(target, attacker))
 		AudioManager.sfx("闪避")
+		_spawn_fx("dodge", _cell_center(target.pos), _cell_center(target.pos))
+		_break_intent(attacker)
 		_stat_bump("dodge")
 		_apply_cooldown(attacker, move)
 		return
@@ -649,12 +679,15 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 			if force <= parry_val:
 				_say(Nar.parry_success(target, attacker))
 				AudioManager.sfx("招架")
+				_spawn_fx("spark", _cell_center(target.pos), _cell_center(target.pos))
+				_break_intent(attacker)
 				_stat_bump("parry_ok")
 				ResourceSystem.drain(target, "体力", PARRY_STAMINA_COST)
 				_apply_cooldown(attacker, move)
 				return
 			_say(Nar.parry_broken(target, attacker))
 			AudioManager.sfx("破格挡")
+			_spawn_fx("break", _cell_center(target.pos), _cell_center(target.pos))
 			_stat_bump("parry_break")
 			ResourceSystem.drain(target, "体力", PARRY_BREAK_STAMINA)
 			# 耐久与脱手只针对持械者（空手无耐久、无可脱）
@@ -669,7 +702,9 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 					_recalc_stats(target)
 	# —— ③ 代受层（要害被攻，境界差<2 且守方反应够快 → 用非致命部位换命）——
 	if target.body[part].vital:
-		if realm_d >= 2:
+		if "无视代受" in move.effects:
+			_say(Nar.ignore_substitute(attacker, target))
+		elif realm_d >= 2:
 			_say(Nar.crush_guard(attacker, target))
 		else:
 			var sub: String = BodySystem.substitute_for(target, part)
@@ -678,6 +713,7 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 				if reaction >= atk_speed * SUB_REACTION_FACTOR:
 					_say(Nar.substitute(target, part, sub))
 					AudioManager.sfx("代受")
+					_spawn_fx("sub", _cell_center(target.pos), _cell_center(target.pos))
 					_stat_bump("substitute")
 					part = sub
 				else:
@@ -701,7 +737,23 @@ func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d:
 	if ap > armor:
 		_say(Nar.attack_break(attacker, target, attacker.active_technique, move, part))
 		var cat: String = attacker.active_technique.category if attacker.active_technique != null else ""
-		AudioManager.sfx({"兵器": "剑击", "拳脚": "钝击", "玄术": "火浪"}.get(cat, "剑击"))
+		var tc: Vector2 = _cell_center(target.pos)
+		var ac: Vector2 = _cell_center(attacker.pos)
+		# 特效与音效同点（视听同点——P1 换帧动画只替换 _draw_fx）
+		if move.move_type == "大招":
+			AudioManager.sfx("大招")
+			_spawn_fx("hit", tc, tc, {"color": Color(0.2, 0.55, 0.6)})
+		else:
+			AudioManager.sfx({"兵器": "剑击", "拳脚": "钝击", "玄术": "火浪"}.get(cat, "剑击"))
+			match cat:
+				"兵器":
+					_spawn_fx("slash", ac, tc)
+				"玄术":
+					_spawn_fx("fire", ac, tc)
+			var hit_col: Color = {
+				"兵器": Color(0.2, 0.55, 0.6), "拳脚": Color(0.75, 0.6, 0.3), "玄术": Color(0.85, 0.35, 0.12),
+			}.get(cat, Color(0.2, 0.55, 0.6))
+			_spawn_fx("hit", tc, tc, {"color": hit_col})
 		BodySystem.hurt(target, part, severity)
 		# 主臂被毁 → 自动换手（§2.5）
 		if part == target.main_arm and int(target.body[part].state) == BodySystem.PartState.DESTROYED:
@@ -711,6 +763,8 @@ func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d:
 		_recalc_stats(target)  # 伤效即时生效
 		# 功法修为精进（命中 +5，一称号档）
 		_gain_proficiency(attacker)
+		# 剑意结算（《功法系统》§3：按谱命中积累/乱序不积/被打断清空）
+		_on_intent_hit(attacker, move)
 		# 要害被毁（一击毙命途）
 		var b: Dictionary = target.body[part]
 		if b.state == BodySystem.PartState.DESTROYED and b.vital:
@@ -720,13 +774,16 @@ func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d:
 			StatusSystem.add_status(target, "灼烧", 3)
 			_say(Nar.burn(target))
 			AudioManager.sfx("灼烧")
+			_spawn_fx("burn", _cell_center(target.pos), _cell_center(target.pos))
 	elif target.armor - ap <= WEAR_THRESHOLD:
 		target.armor = maxf(target.armor - ARMOR_WEAR, 0.0)
 		_say(Nar.wear(attacker, target))
 		AudioManager.sfx("磨防")
+		_spawn_fx("wear", _cell_center(target.pos), _cell_center(target.pos))
 	else:
 		_say(Nar.no_damage(attacker, target))
 		AudioManager.sfx("无伤")
+		_spawn_fx("block", _cell_center(target.pos), _cell_center(target.pos))
 
 
 func _gain_proficiency(u: Unit) -> void:
@@ -769,6 +826,7 @@ func _check_death(u: Unit) -> void:
 		EventBus.unit_died.emit(u, cause)
 		_say(Nar.death(u, cause))
 		AudioManager.sfx("死亡")
+		_spawn_fx("death", _cell_center(u.pos), _cell_center(u.pos))
 		_battle_end(u, cause)
 
 
@@ -798,9 +856,78 @@ func _brief_body(u: Unit) -> String:
 	return " ".join(out) if not out.is_empty() else "无伤"
 
 
+# ---------- 剑意机制（《功法系统》§3：按谱出招积累剑意 / 连击解锁变招 / 被打断溃散） ----------
+
+## 有谱机制？——variants（变招/大招池）非空的功法有谱
+func _has_song(u: Unit) -> bool:
+	return u.active_technique != null and not u.active_technique.variants.is_empty()
+
+
+## 谱下一式：谱 = 功法 moves 数组顺序（剑意层推进循环——叁层后回到起手式）
+func _on_beat_move(u: Unit) -> Move:
+	if not _has_song(u):
+		return null
+	var moves: Array = u.active_technique.moves
+	if moves.is_empty():
+		return null
+	return moves[u.sword_intent % moves.size()]
+
+
+func _is_on_beat(u: Unit, move: Move) -> bool:
+	var beat: Move = _on_beat_move(u)
+	return beat != null and beat.id == move.id
+
+
+## 变招/大招解锁判定：剑意层 + 功法修为（修为是机制解锁的挂钩点，§2.1）
+func variant_unlocked(u: Unit, m: Move) -> bool:
+	if u.sword_intent < m.unlock_intent:
+		return false
+	var prof: float = u.technique_proficiency.get(u.active_technique.id, 0.0)
+	return prof >= m.unlock_proficiency
+
+
+## 剑意溃散（被打断：被闪避/被招架——§3 风险；挂在单位上，切换功法不清空）
+func _break_intent(u: Unit) -> void:
+	if u.sword_intent <= 0:
+		return
+	u.sword_intent = 0
+	_say(Nar.intent_break(u))
+	AudioManager.sfx("溃散")
+	_spawn_fx("intent_break", _cell_center(u.pos), _cell_center(u.pos), {"text": "剑意溃散"})
+	_stat_bump("intent_break")
+
+
+## 命中剑意结算（破防命中才叫「命中」——磨防/无伤不算；§3）
+func _on_intent_hit(attacker: Unit, move: Move) -> void:
+	if not _has_song(attacker):
+		return
+	if move.move_type == "大招":
+		_stat_bump("ultimate_used")
+		return
+	if move.move_type == "变招":
+		_stat_bump("variant_used")
+		return
+	if _is_on_beat(attacker, move):
+		if attacker.sword_intent < 3:
+			attacker.sword_intent += 1
+			var level: int = attacker.sword_intent
+			_say(Nar.intent_up(attacker, level))
+			AudioManager.sfx("剑意")
+			_spawn_fx("intent_up", _cell_center(attacker.pos), _cell_center(attacker.pos), {"text": "剑意·%s层" % Nar.INTENT_NAMES[level - 1]})
+			_stat_bump("intent_up")
+			# 解锁变招提示
+			for v in attacker.active_technique.variants:
+				if v.unlock_intent == level:
+					_say(Nar.variant_unlocked(attacker, v))
+	else:
+		_say(Nar.off_beat(attacker))
+
+
 # ---------- 招式工具 ----------
 
-func _pick_random_move(u: Unit) -> Move:
+## 随机出招（英雄坛说式）。include_variants：AI 用 true（谱意识+用变招/大招，自对弈可验证剑意机制）；
+## 玩家普攻用 false——变招/大招只能手动选（随机消耗剑意不可控，体验差）
+func _pick_random_move(u: Unit, include_variants: bool = false) -> Move:
 	var tech: Technique = u.active_technique
 	if tech == null or tech.moves.is_empty():
 		return null
@@ -808,8 +935,21 @@ func _pick_random_move(u: Unit) -> Move:
 	for m in tech.moves:
 		if _move_cd(u, m) <= 0 and BodySystem.can_use_move(u, m):
 			ready.append(m)
+	if include_variants:
+		var ultimate: Move = null
+		for v in tech.variants:
+			if _move_cd(u, v) <= 0 and BodySystem.can_use_move(u, v) and variant_unlocked(u, v):
+				ready.append(v)
+				if v.move_type == "大招":
+					ultimate = v
+		if ultimate != null and randf() < 0.3:
+			return ultimate
 	if ready.is_empty():
 		return null
+	# 谱机制功法：50% 权重按谱出下一式（AI 也打谱）
+	var beat: Move = _on_beat_move(u)
+	if beat != null and ready.has(beat) and randf() < 0.5:
+		return beat
 	return ready[randi() % ready.size()]
 
 
@@ -826,6 +966,9 @@ func _find_move(u: Unit, move_id: String) -> Move:
 	if u.active_technique == null:
 		return null
 	for m in u.active_technique.moves:
+		if m.id == move_id:
+			return m
+	for m in u.active_technique.variants:
 		if m.id == move_id:
 			return m
 	return null
@@ -906,6 +1049,110 @@ func _pixel_to_cell(p: Vector2) -> Vector2i:
 	return cell
 
 
+# ---------- 表现层：特效与插值（P0 程序化占位——P1 帧动画替换只动本段与 _draw_fx） ----------
+
+func _cell_center(cell: Vector2i) -> Vector2:
+	return ORIGIN + Vector2(cell.x * CELL + CELL / 2.0, cell.y * CELL + CELL / 2.0)
+
+
+## 特效入队：{kind, t, dur, a, b, color, text}——a/b 为格中心坐标
+func _spawn_fx(kind: String, a: Vector2, b: Vector2, extra: Dictionary = {}) -> void:
+	_fx.append({
+		"kind": kind, "t": 0.0, "dur": extra.get("dur", 0.35),
+		"a": a, "b": b, "color": extra.get("color", Color.WHITE), "text": extra.get("text", ""),
+	})
+
+
+func _update_fx(delta: float) -> void:
+	for f in _fx:
+		f.t += delta
+	_fx = _fx.filter(func(f): return f.t < f.dur)
+
+
+## 单位绘制位置插值（移动平滑，~8 格/秒）与死亡淡出
+func _update_render(u: Unit, delta: float) -> void:
+	if u == null:
+		return
+	u.render_pos = u.render_pos.lerp(_cell_center(u.pos), minf(1.0, delta * 8.0))
+	if not u.alive:
+		u.render_alpha = maxf(0.0, u.render_alpha - delta * 1.6)
+
+
+## 特效绘制（与 AudioManager.sfx 同点触发——视听同点）
+func _draw_fx() -> void:
+	for f in _fx:
+		var k: float = f.t / f.dur  # 0→1
+		var b: Vector2 = f.b
+		var a: Vector2 = f.a
+		match f.kind:
+			"hit":
+				draw_arc(b, 10.0 + 20.0 * k, 0, TAU, 24, Color(f.color, 1.0 - k), 3.0)
+			"slash":
+				_draw_slash(a, b, k)
+			"fire":
+				draw_line(a, b, Color(0.85, 0.35, 0.12, (1.0 - k) * 0.7), 10.0 * (1.0 - k))
+			"spark":
+				var c2 := Color(0.9, 0.85, 0.5, 1.0 - k)
+				var r2: float = 10.0 + 14.0 * k
+				draw_line(b + Vector2(-r2, 0), b + Vector2(r2, 0), c2, 2.0)
+				draw_line(b + Vector2(0, -r2), b + Vector2(0, r2), c2, 2.0)
+			"break":
+				var c3 := Color(0.75, 0.6, 0.2, 1.0 - k)
+				for i in 8:
+					var ang := TAU * i / 8.0
+					var dir := Vector2(cos(ang), sin(ang))
+					draw_line(b, b + dir * (8.0 + 22.0 * k), c3, 2.0)
+			"dodge":
+				draw_circle(b + Vector2(-16.0 * k, -6.0 * k), 16.0, Color(0.5, 0.75, 1.0, (1.0 - k) * 0.35))
+			"sub":
+				draw_circle(b, 18.0, Color(0.85, 0.2, 0.15, (1.0 - k) * 0.5))
+			"wear":
+				draw_arc(b, 14.0 + 12.0 * k, 0, TAU, 24, Color(0.85, 0.75, 0.3, (1.0 - k) * 0.8), 2.0)
+			"block":
+				draw_circle(b, 16.0, Color(0.75, 0.75, 0.75, (1.0 - k) * 0.55))
+			"burn":
+				for i in 5:
+					var t2 := fmod(k * 3.0 + i * 0.37, 1.0)
+					draw_circle(b + Vector2((i - 2) * 7.0, -t2 * 22.0), 3.0 * (1.0 - t2), Color(0.9, 0.35, 0.1, 1.0 - t2))
+			"death":
+				draw_circle(b, 10.0 + 40.0 * k, Color(0.12, 0.1, 0.1, (1.0 - k) * 0.55))
+			"guard":
+				draw_arc(b, 20.0 + 10.0 * k, 0, TAU, 24, Color(0.9, 0.9, 0.85, (1.0 - k) * 0.8), 2.0)
+			"intent_up":
+				draw_arc(b, 18.0 + 16.0 * k, 0, TAU, 24, Color(0.2, 0.55, 0.6, (1.0 - k) * 0.9), 2.5)
+				draw_arc(b, 10.0 + 16.0 * k, 0, TAU, 24, Color(0.2, 0.55, 0.6, (1.0 - k) * 0.55), 1.5)
+			"intent_break":
+				var c4 := Color(0.35, 0.4, 0.45, 1.0 - k)
+				for i in 8:
+					var ang := TAU * i / 8.0
+					var dir := Vector2(cos(ang), sin(ang))
+					var r4: float = 20.0 - 14.0 * k
+					draw_line(b + dir * r4, b + dir * (r4 + 6.0), c4, 2.0)
+			"move":
+				draw_line(a, b, Color(0.4, 0.6, 0.9, (1.0 - k) * 0.35), 3.0)
+		if not f.text.is_empty():
+			_draw_fx_text(f)
+
+
+## 浮动文字（升层/溃散提示）
+func _draw_fx_text(f: Dictionary) -> void:
+	var k: float = f.t / f.dur
+	var font := ThemeDB.fallback_font
+	draw_string(font, f.b + Vector2(-32, -34 - 14.0 * k), f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.2, 0.55, 0.6, 1.0 - k))
+
+
+## 剑光弧（攻击者→目标格弧形光带，月白青黛渐隐）
+func _draw_slash(a: Vector2, b: Vector2, k: float) -> void:
+	var dir := b - a
+	var perp := Vector2(-dir.y, dir.x).normalized()
+	var pts := PackedVector2Array()
+	for i in 9:
+		var t := float(i) / 8.0
+		pts.append(a.lerp(b, t) + perp * sin(t * PI) * 26.0)
+	for i in 8:
+		draw_line(pts[i], pts[i + 1], Color(0.75, 0.9, 0.95, (1.0 - k) * 0.8), 3.0 * (1.0 - k) + 1.0)
+
+
 # ---------- 表现层绘制 ----------
 
 func _draw() -> void:
@@ -936,14 +1183,20 @@ func _draw() -> void:
 						Color(0.35, 0.9, 0.45, 0.18))
 	_draw_unit(player, Color(0.4, 0.8, 1.0))
 	_draw_unit(opponent, Color(1.0, 0.45, 0.45))
+	_draw_fx()
 
 
 func _draw_unit(u: Unit, color: Color) -> void:
 	if u == null:
 		return
-	var top_left := ORIGIN + Vector2(u.pos.x * CELL + 6.0, u.pos.y * CELL + 6.0)
+	var alpha := u.render_alpha
+	if alpha <= 0.0:
+		return
+	# 用插值位置绘制（移动平滑）；逻辑格以网格线为准
+	var center: Vector2 = u.render_pos
+	var top_left := center - Vector2(CELL / 2.0 - 6.0, CELL / 2.0 - 6.0)
 	# 阵营底色（精灵对比度兜底）
-	draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(color, 0.22))
+	draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(color, 0.22 * alpha))
 	# 战斗精灵（等比缩入 48×48 格内）
 	var tex: Texture2D = TEX_SPRITES.get(u.id, null)
 	if tex != null:
@@ -951,13 +1204,13 @@ func _draw_unit(u: Unit, color: Color) -> void:
 		var cell_rect := Rect2(top_left, Vector2(CELL - 12, CELL - 12))
 		var k := minf(cell_rect.size.x / ts.x, cell_rect.size.y / ts.y)
 		var draw_size := ts * k
-		draw_texture_rect(tex, Rect2(cell_rect.get_center() - draw_size / 2.0, draw_size), false)
+		draw_texture_rect(tex, Rect2(cell_rect.get_center() - draw_size / 2.0, draw_size), false, Color(1, 1, 1, alpha))
 	# 当前行动者高亮描边
 	if current_actor == u:
-		draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(1.0, 0.9, 0.3), false, 3.0)
+		draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(1.0, 0.9, 0.3, alpha), false, 3.0)
 	# ATB 行动条
 	var bar_w := (CELL - 12) * clampf(u.atb_progress / 100.0, 0.0, 1.0)
-	draw_rect(Rect2(top_left + Vector2(0, CELL - 2), Vector2(bar_w, 6)), Color(0.9, 0.85, 0.3))
+	draw_rect(Rect2(top_left + Vector2(0, CELL - 2), Vector2(bar_w, 6)), Color(0.9, 0.85, 0.3, alpha))
 
 
 # ---------- 调试 ----------
@@ -969,9 +1222,22 @@ func log_msg(text: String) -> void:
 
 
 func _take_debug_shots(delta: float) -> void:
+	if _shot_fx_mode:
+		# 特效触发模式：_fx 非空（有活跃特效）才拍，每 3 帧一张、10 张后退出——
+		# 自对弈 4x 加速下特效真实时长仅 0.05~0.12s，定时拍必然错过，须由特效事件驱动
+		_shot_fx_frame += 1
+		if _fx.is_empty() or _shot_fx_frame % 3 != 0:
+			return
+		_save_debug_shot("fxshot_%02d.png" % (_shot_count + 1))
+		return
+	# 定时模式：每秒一张
 	_shot_elapsed += delta
 	if _shot_elapsed < float(_shot_count + 1):
 		return
+	_save_debug_shot("shot_%d.png" % (_shot_count + 1))
+
+
+func _save_debug_shot(file_name: String) -> void:
 	_shot_count += 1
 	var tex := get_viewport().get_texture()
 	if tex == null:
@@ -981,11 +1247,17 @@ func _take_debug_shots(delta: float) -> void:
 		return
 	var img := tex.get_image()
 	DirAccess.make_dir_recursive_absolute("res://_debug")
-	img.save_png("res://_debug/shot_%d.png" % _shot_count)
-	print("DEBUG shot %d saved (actor=%s)" % [_shot_count, current_actor.display_name if current_actor != null else "none"])
+	img.save_png("res://_debug/%s" % file_name)
+	var fx_desc := ""
+	if not _fx.is_empty():
+		var names: Array[String] = []
+		for f in _fx:
+			names.append(f.kind)
+		fx_desc = " fx=%s" % str(names)
+	print("DEBUG %s saved (actor=%s%s)" % [file_name, current_actor.display_name if current_actor != null else "none", fx_desc])
 	if _shot_count == 1:
 		print("DEBUG hud rect=", hud.get_rect())
 		print("DEBUG log_rtl pos=", hud.log_rtl.position, " size=", hud.log_rtl.size)
 		print("DEBUG action_row pos=", hud.action_row.position, " size=", hud.action_row.size)
-	if _shot_count >= 6:
+	if _shot_count >= 6 and not _shot_fx_mode or _shot_count >= 10:
 		get_tree().quit()

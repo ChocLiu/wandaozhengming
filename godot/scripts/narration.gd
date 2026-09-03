@@ -235,6 +235,51 @@ static func proficiency_up(attacker, tech, title: String) -> Dictionary:
 	return {"t": "%s的《%s》修为精进——「%s」" % [attacker.display_name, tech.display_name, title], "c": C_RULE}
 
 
+# ---------- 剑意机制（《功法系统》§3） ----------
+
+const INTENT_NAMES := ["壹", "贰", "叁"]
+
+
+static func intent_up(u, level: int) -> Dictionary:
+	var v := pick([
+		"%s剑意如潮，已至%s层！",
+		"%s心剑合一，剑意攀升——%s层！",
+	])
+	return {"t": v % [u.display_name, INTENT_NAMES[level - 1]], "c": C_RULE}
+
+
+static func variant_unlocked(u, move) -> Dictionary:
+	var v := pick([
+		"剑意涌动——「%s」解锁！",
+		"剑意贯通，「%s」可用！",
+	])
+	return {"t": v % move.display_name, "c": C_RULE}
+
+
+static func variant_locked(move) -> Dictionary:
+	return {"t": "剑意未至——「%s」还用不出来" % move.display_name, "c": C_INFO}
+
+
+static func intent_break(u) -> Dictionary:
+	var v := pick([
+		"剑势被破——%s的剑意溃散！",
+		"节奏一乱，%s积累的剑意散尽！",
+	])
+	return {"t": v % u.display_name, "c": C_PARRY}
+
+
+static func off_beat(u) -> Dictionary:
+	return {"t": "%s出招乱了谱序——这一式不积剑意" % u.display_name, "c": C_WEAR}
+
+
+static func ultimate_drain(u, move) -> Dictionary:
+	return {"t": "%s剑意尽数倾入「%s」——孤注一掷！" % [u.display_name, move.display_name], "c": C_RULE}
+
+
+static func ignore_substitute(attacker, target) -> Dictionary:
+	return {"t": "剑意如丝——%s无从代受，要害尽露！" % target.display_name, "c": C_HIT}
+
+
 # ---------- 流程 ----------
 
 static func start() -> Dictionary:

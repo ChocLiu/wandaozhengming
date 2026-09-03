@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/move.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "qinglian_nufang"
+display_name = "大招·青莲怒放"
+move_type = "大招"
+cost_pool = "体力"
+cost_amount = 30.0
+speed_bonus = 15.0
+range_min = 1
+range_max = 1
+area_pattern = "单体"
+cooldown = 3
+power_mod = 2.2
+target_parts = PackedStringArray("心脉", "丹田")
+effects = PackedStringArray("无视代受")
+unlock_intent = 3
+unlock_proficiency = 0.0

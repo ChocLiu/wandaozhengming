@@ -48,6 +48,11 @@ var dao_proficiency: Dictionary = {}  # 道领悟值（P0 仅显示）
 var items: Dictionary = {"止血丹": 3}
 var items_used_this_turn: Dictionary = {}  # {药名: 本回合已用次数}——每回合每种丹药限用一次（回合开始清零）
 var pos: Vector2i = Vector2i(5, 5)    # 场上位置
+# —— 剑意机制（《功法系统》§3，v0.4）——
+var sword_intent: int = 0             # 剑意层 = 连续按谱命中数（0~3）；被打断（闪避/招架）清空；挂在单位上、切换功法不清空
+# —— 表现层（战斗内插值——移动平滑与死亡淡出）——
+var render_pos: Vector2 = Vector2.ZERO   # 实际绘制位置（battle._process 中向逻辑格插值）
+var render_alpha: float = 1.0            # 绘制透明度（死亡特效淡出）
 
 
 func _init(def: Dictionary) -> void:
