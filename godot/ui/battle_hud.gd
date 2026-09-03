@@ -171,6 +171,7 @@ func _make_button(text: String, on_pressed: Callable) -> Button:
 	b.text = text
 	b.custom_minimum_size = Vector2(96, 36)
 	b.pressed.connect(on_pressed)
+	b.pressed.connect(func(): AudioManager.sfx("按钮"))
 	# 卷轴质感按钮底板（96×36 与按钮同尺寸）+ 墨字（纸面 UI）
 	# 内容缩进：见 PANEL_INSETS["btn"]——按钮文字/图标自动让出卷轴轴头区
 	var sb := _stylebox(TEX_BTN)
@@ -279,12 +280,15 @@ func show_guard_select(unit) -> void:
 		b.toggle_mode = true
 		b.custom_minimum_size = Vector2(120, 32)
 		b.toggled.connect(func(on: bool): guard_part_toggled.emit(p, on))
+		b.toggled.connect(func(_on: bool): AudioManager.sfx("按钮"))
 		_guard_part_buttons[p] = b
 		part_row.add_child(b)
 	for s in STANCES:
 		var st: String = s
 		move_row.add_child(_make_button(st, func(): guard_stance_selected.emit(st)))
 	move_row.add_child(_make_button("取消", func(): guard_cancel.emit()))
+	# 预显当前守势部位（保持制——打开面板即回显已选，微调即可）
+	update_guard_parts(unit.guard_parts)
 
 
 ## 同步已选部位的高亮（◆ 标记）
@@ -307,7 +311,12 @@ func update_state(battle) -> void:
 	var turn_text := actor.display_name if actor != null else "——"
 	var hint := ""
 	if actor == battle.player:
-		hint = "▶ 轮到你：点棋盘移动（剩%d步）→ 普攻随机 / 「招式」选招 / 「守势」 / 「切换」 / 丹药" % actor.move_left
+		if battle.current_acted:
+			hint = "▶ 已出招：可继续移动（剩%d步）/ 丹药 / 守势，或点「结束行动」" % actor.move_left
+		elif actor.move_left <= 0:
+			hint = "▶ 步数已尽：仍可出招 / 丹药 / 守势——出招后本回合自动结束"
+		else:
+			hint = "▶ 轮到你：点棋盘移动（剩%d步）→ 普攻随机 / 「招式」选招 / 「守势」 / 「切换」 / 丹药" % actor.move_left
 	info_label.text = "%s\n%s\n%s %s" % [
 		_unit_line(battle.player),
 		_unit_line(battle.opponent),

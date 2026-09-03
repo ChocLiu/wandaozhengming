@@ -24,6 +24,7 @@ FieldSystem="*res://systems/field_system.gd"
 UnitSystem="*res://systems/unit_system.gd"
 TimelineSystem="*res://systems/timeline_system.gd"
 BodySystem="*res://systems/body_system.gd"
+AudioManager="*res://systems/audio_manager.gd"
 
 [display]
 
@@ -31,6 +32,10 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot_mcp_toolkit/plugin.cfg")
 
 [rendering]
 

@@ -153,6 +153,10 @@ static func no_guard_parts() -> Dictionary:
 	return {"t": "至少选一个重点保护部位（点自己的部位按钮）", "c": C_INFO}
 
 
+static func guard_full() -> Dictionary:
+	return {"t": "守势最多重点保护两处——先取消一处再选新的", "c": C_INFO}
+
+
 static func seal(u) -> Dictionary:
 	return {"t": "%s服下止血丹——创口止血，血不再流" % u.display_name, "c": C_INFO}
 
@@ -239,6 +243,11 @@ static func start() -> Dictionary:
 
 static func turn(u, steps: int) -> Dictionary:
 	return {"t": "——轮到%s行动（可移动 %d 步）——" % [u.display_name, steps], "c": C_INFO}
+
+
+## 回合自动结束（已出手且步数已尽——行动规则：移动耗步数、出招不耗）
+static func turn_auto_end(u) -> Dictionary:
+	return {"t": "%s已出手、步数已尽——本回合结束" % u.display_name, "c": C_INFO}
 
 
 static func speed_contest(atk: float, defense: float) -> Dictionary:

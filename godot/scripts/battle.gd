@@ -83,12 +83,12 @@ func _ready() -> void:
 	TimelineSystem.reset_all()
 	player = UnitSystem.spawn({
 		"id": "player", "display_name": "你", "team": 0, "realm": "金丹",
-		"base_speed": 55.0, "base_agility": 40.0, "base_move_speed": 55.0,
+		"base_speed": 75.0, "base_agility": 40.0, "base_move_speed": 75.0,
 		"base_attack_power": 18.0, "base_armor": 20.0,
 		"pools": ResourceSystem.init_pools(100.0, 100.0, 80.0, 50.0),
 		"rules": {"空间": 60.0},
 		"technique_proficiency": {"qinglian_jiange": 15.0, "pojunjuan": 5.0},
-		"dao_proficiency": {"剑道": 20.0},
+		"dao_proficiency": {"剑道": 25.0},
 		"pos": Vector2i(2, 5),
 		"items": {"止血丹": 3},
 	})
@@ -101,7 +101,7 @@ func _ready() -> void:
 		"base_speed": 75.0, "base_agility": 90.0, "base_move_speed": 75.0,
 		"base_attack_power": 8.0, "base_armor": 35.0,
 		"pools": ResourceSystem.init_pools(90.0, 110.0, 60.0, 40.0),
-		"rules": {"空间": 25.0, "火": 90.0},
+		"rules": {"空间": 5.0, "火": 25.0},
 		"technique_proficiency": {"fentian_jue": 40.0},
 		"dao_proficiency": {},
 		"pos": Vector2i(7, 5),
@@ -241,6 +241,7 @@ func _on_unit_ready(u: Unit) -> void:
 	if bleed > 0.0:
 		ResourceSystem.drain(u, "气血", bleed * BLEED_PER_TURN)
 		_say(Nar.bleed_tick(u))
+		AudioManager.sfx("失血")
 	StatusSystem.tick_turn(u)
 	_check_death(u)
 	if battle_over:
@@ -252,6 +253,7 @@ func _on_unit_ready(u: Unit) -> void:
 		hud.enable_actions(false)
 		_ai_act_async(u)
 	_say(Nar.turn(u, u.move_left))
+	AudioManager.sfx("回合")
 
 
 ## 步数额度 = ceil(move_speed/20)，再按腿伤修正（§2.5：轻伤-1 / 重伤减半 / 毁=无法移动）
@@ -321,7 +323,9 @@ func _try_move(u: Unit, cell: Vector2i) -> void:
 	hud.clear_parts()
 	hud.clear_moves()
 	_say(Nar.move(u, dist))
+	AudioManager.sfx("移动")
 	if current_acted and u.move_left <= 0:
+		_say(Nar.turn_auto_end(u))
 		_end_turn(u)
 
 
@@ -383,6 +387,7 @@ func _on_part_selected(part: String) -> void:
 	_do_attack(player, opponent, part, move, hud.rule_toggle.button_pressed)
 	current_acted = true
 	if player.move_left <= 0:
+		_say(Nar.turn_auto_end(player))
 		_end_turn(player)
 
 
@@ -406,6 +411,7 @@ func _on_switch_requested() -> void:
 	hud.clear_parts()
 	hud.clear_moves()
 	_say(Nar.switch_tech(player, next, player.weapon))
+	AudioManager.sfx("切换")
 
 
 # ---------- 守势宣言（§5.1.2） ----------
@@ -423,6 +429,8 @@ func _on_guard_part_toggled(part: String, on: bool) -> void:
 		return
 	if on:
 		if _guard_pending.size() >= 2:
+			_say(Nar.guard_full())
+			hud.update_guard_parts(_guard_pending)  # 已满两位：回弹刚按下的按钮
 			return
 		_guard_pending.append(part)
 	else:
@@ -443,11 +451,13 @@ func _on_guard_stance_selected(stance: String) -> void:
 			_guard_selecting = false
 			hud.clear_guard_select()
 			return
+	var stance_changed: bool = player.stance != stance  # 重确认同一架势不重复扣步（保持制）
 	player.guard_parts = _guard_pending.duplicate()
 	player.stance = stance
-	if stance == "招架":
+	if stance == "招架" and stance_changed:
 		player.move_left = maxi(0, player.move_left - 1)
 	_say(Nar.guard_declared(player, " ".join(_guard_pending), stance))
+	AudioManager.sfx("守势")
 	_guard_selecting = false
 	hud.clear_guard_select()
 
@@ -463,6 +473,7 @@ func _on_item_requested() -> void:
 	_do_item(player)
 	# 丹药不占出招机会：已出手且无步数时才自动结束回合
 	if current_acted and player.move_left <= 0:
+		_say(Nar.turn_auto_end(player))
 		_end_turn(player)
 
 
@@ -567,6 +578,7 @@ func _ai_move_toward(u: Unit, target: Unit, want_range: int) -> void:
 	if steps > 0:
 		ResourceSystem.drain(u, "体力", float(steps) * MOVE_STAMINA_COST)
 		_say(Nar.move(u, steps))
+		AudioManager.sfx("移动")
 
 
 # ---------- 行动结算：四层防御链（§5.1） ----------
@@ -620,6 +632,7 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 	# —— ① 闪避层（被动常驻，无代价）——
 	if total_atk <= def_speed:
 		_say(Nar.dodge(target, attacker))
+		AudioManager.sfx("闪避")
 		_stat_bump("dodge")
 		_apply_cooldown(attacker, move)
 		return
@@ -635,11 +648,13 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 			var parry_val: float = target.parry + (STANCE_PARRY_BONUS if target.stance == "招架" else 0.0) + target.agility * PARRY_AGILITY_WEIGHT
 			if force <= parry_val:
 				_say(Nar.parry_success(target, attacker))
+				AudioManager.sfx("招架")
 				_stat_bump("parry_ok")
 				ResourceSystem.drain(target, "体力", PARRY_STAMINA_COST)
 				_apply_cooldown(attacker, move)
 				return
 			_say(Nar.parry_broken(target, attacker))
+			AudioManager.sfx("破格挡")
 			_stat_bump("parry_break")
 			ResourceSystem.drain(target, "体力", PARRY_BREAK_STAMINA)
 			# 耐久与脱手只针对持械者（空手无耐久、无可脱）
@@ -649,6 +664,7 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 					target.weapon_disarmed = true
 					target.weapon_durability = 10.0  # 拾回后耐久重置（P0 简化）
 					_say(Nar.parry_disarm(target, attacker))
+					AudioManager.sfx("脱手")
 					_stat_bump("disarm")
 					_recalc_stats(target)
 	# —— ③ 代受层（要害被攻，境界差<2 且守方反应够快 → 用非致命部位换命）——
@@ -661,6 +677,7 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 				var reaction: float = target.agility * ResourceSystem.stamina_penalty(target)
 				if reaction >= atk_speed * SUB_REACTION_FACTOR:
 					_say(Nar.substitute(target, part, sub))
+					AudioManager.sfx("代受")
 					_stat_bump("substitute")
 					part = sub
 				else:
@@ -683,6 +700,8 @@ func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d:
 	var severity: int = 2 if realm_d >= 2 else 1
 	if ap > armor:
 		_say(Nar.attack_break(attacker, target, attacker.active_technique, move, part))
+		var cat: String = attacker.active_technique.category if attacker.active_technique != null else ""
+		AudioManager.sfx({"兵器": "剑击", "拳脚": "钝击", "玄术": "火浪"}.get(cat, "剑击"))
 		BodySystem.hurt(target, part, severity)
 		# 主臂被毁 → 自动换手（§2.5）
 		if part == target.main_arm and int(target.body[part].state) == BodySystem.PartState.DESTROYED:
@@ -700,11 +719,14 @@ func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d:
 		if "灼烧" in move.effects:
 			StatusSystem.add_status(target, "灼烧", 3)
 			_say(Nar.burn(target))
+			AudioManager.sfx("灼烧")
 	elif target.armor - ap <= WEAR_THRESHOLD:
 		target.armor = maxf(target.armor - ARMOR_WEAR, 0.0)
 		_say(Nar.wear(attacker, target))
+		AudioManager.sfx("磨防")
 	else:
 		_say(Nar.no_damage(attacker, target))
+		AudioManager.sfx("无伤")
 
 
 func _gain_proficiency(u: Unit) -> void:
@@ -729,6 +751,7 @@ func _do_item(u: Unit) -> void:
 	u.items_used_this_turn["止血丹"] = int(u.items_used_this_turn.get("止血丹", 0)) + 1
 	BodySystem.seal_wounds(u)
 	_say(Nar.seal(u))
+	AudioManager.sfx("服药")
 	if u == player:
 		hud.set_item_used(true)
 
@@ -745,6 +768,7 @@ func _check_death(u: Unit) -> void:
 		u.alive = false
 		EventBus.unit_died.emit(u, cause)
 		_say(Nar.death(u, cause))
+		AudioManager.sfx("死亡")
 		_battle_end(u, cause)
 
 
@@ -755,6 +779,7 @@ func _battle_end(loser: Unit, cause: String = "") -> void:
 	hud.show_restart()
 	var winner: Unit = opponent if loser == player else player
 	_say(Nar.end(winner))
+	AudioManager.sfx("胜利" if winner == player else "失败")
 	if _autoplay:
 		_auto_restart_left = 30
 		print("AUTOPLAY battle end: winner=%s loser=%s cause=%s 回合数=%d 统计=%s 双方部位=%s vs %s" % [
