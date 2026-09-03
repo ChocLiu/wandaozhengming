@@ -41,7 +41,8 @@ const DODGE_STAMINA_COST := 5.0   # 闪避架势宣言耗体力
 const PROF_TIER_COEFFS := [0.8, 0.9, 1.0, 1.1, 1.2]
 
 const CELL := 60.0
-const ORIGIN := Vector2(60, 80)
+# 布局 v0.4：棋盘靠左（占住左侧空白），右侧整列给解说与按钮（见 HUD）
+const ORIGIN := Vector2(20, 72)
 
 var player: Unit
 var opponent: Unit
@@ -882,17 +883,18 @@ func _pixel_to_cell(p: Vector2) -> Vector2i:
 # ---------- 表现层绘制 ----------
 
 func _draw() -> void:
-	# 整屏水墨棋盘背景（1280×720）
+	# 整屏水墨背景（氛围层）→ 纸色遮罩压淡（背景画与逻辑棋盘不对齐，只作氛围——布局 v0.4）
 	draw_texture_rect(TEX_BG, Rect2(Vector2.ZERO, Vector2(1280, 720)), false)
-	# 战术网格线（柔和白线，叠在背景之上）
+	draw_rect(Rect2(Vector2.ZERO, Vector2(1280, 720)), Color(0.96, 0.93, 0.86, 0.5))
+	# 战术网格线（柔和白线，逻辑棋盘以网格线为准）
 	for x in range(FieldSystem.GRID_W + 1):
 		draw_line(
 			ORIGIN + Vector2(x * CELL, 0), ORIGIN + Vector2(x * CELL, FieldSystem.GRID_H * CELL),
-			Color(1.0, 1.0, 1.0, 0.14), 1.0)
+			Color(0.35, 0.32, 0.25, 0.22), 1.0)
 	for y in range(FieldSystem.GRID_H + 1):
 		draw_line(
 			ORIGIN + Vector2(0, y * CELL), ORIGIN + Vector2(CELL * FieldSystem.GRID_W, y * CELL),
-			Color(1.0, 1.0, 1.0, 0.14), 1.0)
+			Color(0.35, 0.32, 0.25, 0.22), 1.0)
 	# 可移动范围高亮（玩家回合；双腿已毁则不可移动）
 	if current_actor == player and not battle_over and BodySystem.leg_penalty(player) != 3:
 		for x in range(FieldSystem.GRID_W):

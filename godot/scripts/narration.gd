@@ -3,13 +3,14 @@ class_name Narration
 ## 所有函数返回 {t: 文本, c: 颜色}，调用方通过 hud.log_nar(t, c) 输出。
 ## 变体词库防疲劳；着色按事件类型（破防红/招架灰/规则金/灼烧橙/死亡深红/信息白）。
 
-const C_HIT := Color(0.95, 0.45, 0.45)
-const C_PARRY := Color(0.62, 0.66, 0.72)
-const C_WEAR := Color(0.72, 0.72, 0.8)
-const C_RULE := Color(0.92, 0.8, 0.4)
-const C_BURN := Color(0.95, 0.6, 0.3)
-const C_DEATH := Color(0.92, 0.3, 0.3)
-const C_INFO := Color(0.93, 0.93, 0.93)
+# 墨色系解说配色（纸面 UI——浅色卷轴底 + 深色墨字，布局 v0.4）
+const C_HIT := Color(0.55, 0.14, 0.1)     # 破防：朱砂墨
+const C_PARRY := Color(0.33, 0.37, 0.42)  # 招架/闪避：青灰墨
+const C_WEAR := Color(0.5, 0.5, 0.48)     # 磨防/失血：淡墨
+const C_RULE := Color(0.6, 0.42, 0.08)    # 规则：赭金墨
+const C_BURN := Color(0.75, 0.32, 0.08)   # 灼烧：赤橙墨
+const C_DEATH := Color(0.52, 0.05, 0.05)  # 死亡：重朱
+const C_INFO := Color(0.14, 0.12, 0.09)   # 信息：浓墨
 
 
 static func pick(variants: Array) -> String:
