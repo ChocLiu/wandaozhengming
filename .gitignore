@@ -17,3 +17,7 @@ _drafts/
 
 # 调试截图
 godot/_debug/
+
+# 美术废弃稿与大文件本地备份（art/README.md 约定：不入库）
+art/废弃/
+art/_本地备份/

@@ -1,0 +1,552 @@
+{
+  "board_v2": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Top-down orthographic view of an ancient Chinese ink-wash battlefield ground for a strategy board game, terrain elements spread edge to edge: mountains, pine forest, river, rocks, bamboo groves and mist, muted ink brush strokes on aged rice paper texture, full-canvas seamless composition, no grid lines, no text, no UI, no border frame"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 5001,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_board_v2"
+      }
+    }
+  },
+  "panel_dialogue_v2": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Ancient Chinese scroll UI panel, wide horizontal empty ornate frame, ink-wash style, bamboo-slip texture, decorative carved cloud ornaments in four corners, plain blank parchment center for message text, game UI element, isolated on plain solid white background, no text"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1152,
+        "height": 768,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 5002,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_panel_dialogue_v2"
+      }
+    }
+  },
+  "panel_info_v2": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Ancient Chinese long horizontal parchment banner strip, scroll-roll ends on both sides, decorative carved cloud corner ornaments, plain empty parchment center, ink-wash style, game UI element, isolated on plain solid white background, no text"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1216,
+        "height": 256,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 5003,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_panel_info_v2"
+      }
+    }
+  },
+  "board_atmos_v2": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Top-down aerial cinematic view of a xianxia battlefield landscape in Chinese ink-wash painting, mountains, pine forest, winding river, drifting mist, aged rice paper texture, atmospheric wide scenery, no grid lines, no text, no markers, no UI"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1344,
+        "height": 768,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 5004,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_board_atmos_v2"
+      }
+    }
+  },
+  "sprite_female": {
+    "30": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "qwen_3_4b_fp4_mixed.safetensors",
+        "type": "lumina2",
+        "device": "default"
+      }
+    },
+    "29": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "ae.safetensors"
+      }
+    },
+    "28": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "z_image_turbo_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "27": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "30",
+          0
+        ],
+        "text": "Full-body character sprite of a young female Chinese sword cultivator in white and blue hanfu robes, long black hair in a ponytail, holding a slender longsword, upright standing pose, clean simple silhouette, traditional Chinese ink-wash painting style, game battle asset, isolated on plain solid white background, no text, full body, feet visible"
+      }
+    },
+    "33": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "27",
+          0
+        ]
+      }
+    },
+    "11": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "28",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "13": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "3": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "11",
+          0
+        ],
+        "positive": [
+          "27",
+          0
+        ],
+        "negative": [
+          "33",
+          0
+        ],
+        "latent_image": [
+          "13",
+          0
+        ],
+        "seed": 5005,
+        "steps": 8,
+        "cfg": 1.0,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "8": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "3",
+          0
+        ],
+        "vae": [
+          "29",
+          0
+        ]
+      }
+    },
+    "9": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "8",
+          0
+        ],
+        "filename_prefix": "p0_sprite_female"
+      }
+    }
+  }
+}

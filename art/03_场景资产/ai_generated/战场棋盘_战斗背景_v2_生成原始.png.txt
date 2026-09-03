@@ -1,0 +1,3 @@
+提示词: Top-down orthographic view of an ancient Chinese ink-wash battlefield ground for a strategy board game, terrain elements spread edge to edge: mountains, pine forest, river, rocks, bamboo groves and mist, muted ink brush strokes on aged rice paper texture, full-canvas seamless composition, no grid lines, no text, no UI, no border frame
+模型: Z-Image Turbo NVFP4（z_image_turbo_nvfp4 + qwen_3_4b_fp4_mixed + ae, 8 步 cfg1 res_multistep simple, ModelSamplingAuraFlow shift=3）
+后处理: 无（原始生成原图）

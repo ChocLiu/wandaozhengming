@@ -1,0 +1,3 @@
+提示词: Full-body character sprite of a young female Chinese sword cultivator in white and blue hanfu robes, long black hair in a ponytail, holding a slender longsword, upright standing pose, clean simple silhouette, traditional Chinese ink-wash painting style, game battle asset, isolated on plain solid white background, no text, full body, feet visible
+模型: Z-Image Turbo NVFP4（z_image_turbo_nvfp4 + qwen_3_4b_fp4_mixed + ae, 8 步 cfg1 res_multistep simple, ModelSamplingAuraFlow shift=3）
+后处理: rembg 去底，等比缩放至 256×256 透明画布

@@ -1,3 +1,0 @@
-提示词: Ancient Chinese scroll and bamboo-slip UI panel, empty ornate vertical frame, ink-wash style, decorative carved cloud ornaments in four corners, plain blank paper center for text, game UI element, isolated on plain solid white background, no text
-模型: Z-Image Turbo NVFP4（z_image_turbo_nvfp4 + qwen_3_4b_fp4_mixed + ae, 8 步 cfg1 res_multistep simple, ModelSamplingAuraFlow shift=3）
-后处理: rembg 去底，9-slice 拉伸至 378×628 精确尺寸（四角装饰未变形）
