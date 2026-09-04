@@ -14,7 +14,7 @@ const WeaponData := preload("res://scripts/weapons.gd")
 const TEX_BG := preload("res://assets/backgrounds/战场棋盘_整屏背景_v2_ai.png")       # 1280×720 氛围层
 const TEX_BOARD := preload("res://assets/backgrounds/战场棋盘_战斗背景_v2_ai.png")    # 600×600 棋盘底图
 const TEX_SPRITES := {
-	"player": preload("res://assets/sprites/玩家_女剑修_战斗精灵_v1_ai.png"),
+	"player": preload("res://assets/sprites/玩家_女剑修_战斗精灵_v2_ai.png"),
 	"opponent": preload("res://assets/sprites/散修_焚天诀_战斗精灵_v1_ai.png"),
 }
 
@@ -1605,11 +1605,11 @@ func _draw_unit(u: Unit, color: Color) -> void:
 		var k := minf(cell_rect.size.x / ts.x, cell_rect.size.y / ts.y)
 		var draw_size := ts * k
 		var mirrored: bool = u.vis_facing * SPRITE_DIR < 0.0
-		if mirrored:
-			draw_set_transform(cell_rect.get_center(), 0.0, Vector2(-1.0, 1.0))
+		# 变换原点必须无条件落到格中心：纹理 Rect 以 (0,0) 为心绘制，若只在镜像时设
+		# transform，非镜像态原点留在屏幕 (0,0)，负偏移把整图推到视口左上外（精灵消失根因）
+		draw_set_transform(cell_rect.get_center(), 0.0, Vector2(-1.0 if mirrored else 1.0, 1.0))
 		draw_texture_rect(tex, Rect2(-draw_size / 2.0, draw_size), false, Color(1, 1, 1, alpha))
-		if mirrored:
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)  # 复位（后续描边/ATB 条不受镜像）
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)  # 复位（后续描边/ATB 条不受镜像）
 	# 当前行动者高亮描边
 	if current_actor == u:
 		draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(1.0, 0.9, 0.3, alpha), false, 3.0)

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b04dm05lingyv"
-path="res://.godot/imported/玩家_剑修_战斗精灵_v1_ai.png-a774021485ebe98f6c04ac97cf13194a.ctex"
+uid="uid://oii07tlspolf"
+path="res://.godot/imported/玩家_女剑修_战斗精灵_v2_ai.png-6a62ee2c764f7dc616bc3e05308ded0c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/sprites/玩家_剑修_战斗精灵_v1_ai.png"
-dest_files=["res://.godot/imported/玩家_剑修_战斗精灵_v1_ai.png-a774021485ebe98f6c04ac97cf13194a.ctex"]
+source_file="res://assets/sprites/玩家_女剑修_战斗精灵_v2_ai.png"
+dest_files=["res://.godot/imported/玩家_女剑修_战斗精灵_v2_ai.png-6a62ee2c764f7dc616bc3e05308ded0c.ctex"]
 
 [params]
 
