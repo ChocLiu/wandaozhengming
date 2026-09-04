@@ -280,6 +280,78 @@ static func ignore_substitute(attacker, target) -> Dictionary:
 	return {"t": "剑意如丝——%s无从代受，要害尽露！" % target.display_name, "c": C_HIT}
 
 
+# ---------- v0.5：朝向与绕后 / 部位策略 / 流血 / 护体玄气（§1.1 / §2.3 / §5.2 / §5.3） ----------
+
+static func flank(attacker, target) -> Dictionary:
+	var v := pick([
+		"%s已欺到%s身后——背门大开！",
+		"%s绕到%s背后，出其不意！",
+	])
+	return {"t": v % [attacker.display_name, target.display_name], "c": C_RULE}
+
+
+## 部位策略制（自动/随机/手动/重点）
+static func strategy_set(u, mode: String) -> Dictionary:
+	var desc: String = {"自动": "自动寻要害、打空当", "随机": "随手出招、落点随机", "手动": "每击弹出部位行、亲手点选"}.get(mode, "")
+	return {"t": "%s的攻部位策略设为「%s」（%s）" % [u.display_name, mode, desc], "c": C_INFO}
+
+
+static func focus_part_pick() -> Dictionary:
+	return {"t": "重点策略：请点选敌方一个部位作为重点（点选一次即锁定，此后自动攻其要害）", "c": C_INFO}
+
+
+static func focus_part_set(u, part: String) -> Dictionary:
+	return {"t": "%s锁定「%s」为重点——此后出手专攻此部" % [u.display_name, part], "c": C_INFO}
+
+
+static func focus_part_keep(u, part: String) -> Dictionary:
+	return {"t": "重点部位仍是「%s」——若已毁则自动退回「自动」" % part, "c": C_INFO}
+
+
+static func focus_part_lost() -> Dictionary:
+	return {"t": "重点部位已被打毁——攻部位策略退回「自动」", "c": C_INFO}
+
+
+## 流血掷骰（§2.3：纯刃必流 / 钝器大概率不流）
+static func bleed_wound(attacker, target, part: String) -> Dictionary:
+	var v := pick([
+		"%s的「%s」创口开裂，鲜血涌出！",
+		"一击见血！%s的「%s」血流不止",
+	])
+	return {"t": v % [target.display_name, part], "c": C_WEAR}
+
+
+## 护体玄气（§5.1.5 罩层 / §5.2 策略制）
+static func shield_hit(attacker, target) -> Dictionary:
+	var v := pick([
+		"%s的护体玄气一阵激荡——%s这一击伤不及体！",
+		"%s的护体玄气如涟漪荡开，%s的攻势被尽数震散！",
+	])
+	return {"t": v % [target.display_name, attacker.display_name], "c": C_RULE}
+
+
+static func shield_break(target) -> Dictionary:
+	return {"t": "%s的护体玄气告破——玄光碎裂，肉身再无凭依！" % target.display_name, "c": C_RULE}
+
+
+static func shield_strategy_set(u) -> Dictionary:
+	var desc: String = {
+		"守常": "不主动灌注，只付维持",
+		"周天": "回合末补罩至上限（1 玄力:1）",
+		"凝罡": "回合末凝气成罡至 125%（超限段 1.25×/点）",
+		"守一": "回合末抱元守一至 150%（100~125% 段 1.25×、125~150% 段 1.5×/点）",
+	}.get(u.shield_strategy, "")
+	return {"t": "护体策略定为「%s」——%s（本回合末结算，此后沿用）" % [u.shield_strategy, desc], "c": C_INFO}
+
+
+static func shield_pour(u, amount: float) -> Dictionary:
+	return {"t": "%s引玄力温养护体玄气——罩回复 %.0f 点" % [u.display_name, amount], "c": C_RULE}
+
+
+static func no_retreat_room(u) -> Dictionary:
+	return {"t": "%s退无可退——背水一战！" % u.display_name, "c": C_INFO}
+
+
 # ---------- 流程 ----------
 
 static func start() -> Dictionary:

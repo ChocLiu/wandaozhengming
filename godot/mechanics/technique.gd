@@ -22,5 +22,6 @@ extends Resource
 @export var bonus_qi_max: float = 0.0
 @export var bonus_stamina_max: float = 0.0
 @export var bonus_xuan_max: float = 0.0
+@export var bonus_shield: float = 0.0    # 护体玄气上限加成（v0.5，《战斗系统》§5 护体策略）
 # —— 兼容性 v1 ——
 @export var conflicts_with: PackedStringArray = []  # 冲突声明（类别/资源面：抢同一池的功法互斥）

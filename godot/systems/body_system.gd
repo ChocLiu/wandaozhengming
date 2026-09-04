@@ -92,20 +92,28 @@ func make_body(realm: String) -> Dictionary:
 	return body
 
 
-## 伤害一个部位。severity: 1=轻伤一格, 2=重伤, 3=毁
+## 伤害一个部位。severity: 1=轻伤一格, 2=重伤, 3=毁。
+## v0.5：不再无条件置 bleeding——是否流血由调用方按武器利刃属性掷骰后经 set_bleeding 置位
+## （《战斗系统》§2.3：纯刃必流/半刃中概率/钝器大概率不流——轻中重伤皆可流，只是概率不同）。
 func hurt(unit, part: String, severity: int = 1) -> void:
 	var b: Dictionary = unit.body.get(part, {})
 	if b.is_empty():
 		return
 	var old_state: int = b.state
 	b.state = mini(old_state + severity, PartState.DESTROYED)
-	if b.state >= PartState.LIGHT:
-		b.bleeding = true
 	EventBus.part_hurt.emit(unit, part, old_state, b.state)
 	if b.state == PartState.DESTROYED:
 		EventBus.part_destroyed.emit(unit, part)
 		if b.vital:
 			EventBus.vital_hit.emit(unit, part)
+
+
+## 按掷骰结果设置某部位是否流血（v0.5：失血概率化后由战斗层调用）
+func set_bleeding(unit, part: String, on: bool) -> void:
+	var b: Dictionary = unit.body.get(part, {})
+	if b.is_empty() or b.state < PartState.LIGHT:
+		return
+	b.bleeding = on
 
 
 ## 当前失血速率（每处流血创伤 BLEED_RATE/秒，由调用方乘 delta）

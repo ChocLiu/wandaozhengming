@@ -22,4 +22,5 @@ bonus_speed = 0.0
 bonus_qi_max = 0.0
 bonus_stamina_max = 0.0
 bonus_xuan_max = 15.0
+bonus_shield = 10.0
 conflicts_with = PackedStringArray()

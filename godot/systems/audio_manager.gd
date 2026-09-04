@@ -27,6 +27,10 @@ const RECIPES := {
 	"死亡": {"kind": "sweep", "freqs": [220.0, 55.0], "dur": 0.55, "vol": 0.34, "decay": 3.0},
 	"服药": {"kind": "sweep", "freqs": [480.0, 720.0], "dur": 0.12, "vol": 0.2, "decay": 6.0},
 	"守势": {"kind": "tone", "freqs": [550.0], "dur": 0.1, "vol": 0.2, "decay": 5.0},
+	# —— v0.5 护体玄气（《战斗系统》§5.1.5/§5.2——护体受震/告破/凝护补罩）——
+	"护体": {"kind": "tone", "freqs": [260.0], "dur": 0.16, "vol": 0.24, "decay": 5.0},
+	"破罩": {"kind": "sweep", "freqs": [600.0, 160.0], "dur": 0.3, "vol": 0.28, "decay": 4.0},
+	"凝护": {"kind": "sweep", "freqs": [300.0, 620.0], "dur": 0.14, "vol": 0.18, "decay": 6.0},
 	"切换": {"kind": "sweep", "freqs": [380.0, 760.0], "dur": 0.09, "vol": 0.2, "decay": 6.0},
 	"移动": {"kind": "tone", "freqs": [300.0], "dur": 0.04, "vol": 0.12, "decay": 6.0},
 	"回合": {"kind": "chime", "freqs": [660.0], "dur": 0.22, "vol": 0.26, "decay": 5.0, "partials": [1.0, 2.0]},

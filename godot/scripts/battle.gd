@@ -1,9 +1,10 @@
 extends Node2D
 ## P0.5 战斗原型主控制器（内核与表现分离：内核=六子系统+Unit 纯数据，表现=本场景绘制+HUD）
-## 对应文档：《战斗系统》v0.3 + 挂载体系。
-## 演示循环：ATB 读条 → 移动/普攻(随机招式)/招式面板(手动选招带CD)/切换功法/守势宣言/丹药
-##           → 四层防御链（①闪避→②招架→③代受→④部位化护体）→ 破防模型 → 失血/要害死亡。
+## 对应文档：《战斗系统》v0.5 + 挂载体系。
+## 演示循环：ATB 读条 → 移动/普攻(随机招式)/招式面板(手动选招带CD)/切换功法/守势宣言/丹药/策略按钮
+##           → 防御链（①闪避→②招架→③代受→④护体玄气→肉身伤势）→ 失血/要害死亡。
 ## 攻击范围 = 招式基础射程 + 武器修正；面板 = 基础 + 挂载加成 + 武器，再乘部位伤效修正。
+## v0.5：朝向与绕后 / 部位策略制与护体策略制（回合末结算）/ 流血概率化（edge/blade 武器属性）/ 受伤程度链。
 
 const Grades := preload("res://scripts/cultivation_grades.gd")
 const Nar := preload("res://scripts/narration.gd")
@@ -41,6 +42,25 @@ const DODGE_STAMINA_COST := 5.0   # 闪避架势宣言耗体力
 # 熟练度档系数（《功法系统》§2.2）：初窥→掌道——招式威力与臂伤降档的落点
 const PROF_TIER_COEFFS := [0.8, 0.9, 1.0, 1.1, 1.2]
 
+# —— 朝向与绕后（v0.5《战斗系统》§1.1 朝向/§5.1.7 绕后——视觉朝向与几何背向分离）——
+const SPRITE_DIR := 1.0          # 贴图原始朝向基准（假定画面朝右=1，镜像=×(-1)）；试玩发现镜像反了只改此常数，不动资产
+const FLANK_SPEED_MULT := 0.7    # 绕后：被绕者 ① 层防速 ×0.7（用户定量）
+const THREAT_RANGE_FLOOR := 1    # 威胁半径 = 此值 + 武器射程修正（range_bonus）——区内逼近步价 ×2（横/退只 ×1）
+# —— 流血概率（v0.5《战斗系统》§2.3——edge 锋利度/blade 刃长是武器基本属性）——
+const EDGE_P := [0.10, 0.45, 0.75, 1.0]        # 锋利度 钝/半刃/利刃/纯刃 → 基础流血概率（纯刃必流；初值待调）
+const BLADE_MULT := {0: 0.75, 1: 1.0, 2: 1.15} # 刃长 短/中/长 → 概率修正（初值待调）
+const SEV_BLEED_MULT := {1: 0.6, 2: 0.85, 3: 1.0}  # 最终部位状态 轻伤/重伤/毁 → 概率修正（初值待调）
+# —— 护体玄气（v0.5《战斗系统》§5.1.5 罩层 / §5.2 护体策略制——境界+功法+修为定上限，满罩开局）——
+const SHIELD_REALM := {"凡人": 15.0, "练气": 30.0, "筑基": 45.0, "金丹": 60.0}  # 境界 → 罩上限基数（初值待调）
+const SHIELD_PER_PROF := 2.0     # 罩上限 += 修为称号档 × 此值（称号每 5 点一档，cultivation_grades）
+const SHIELD_UPKEEP := 1.0       # 罩>0 时每回合行动开始扣的维持玄力（各档同付；玄力空免扣不衰减）
+const SHIELD_STRATEGY_PCT := {"守常": 0.0, "周天": 1.0, "凝罡": 1.25, "守一": 1.5}  # 策略档 → 补罩目标（罩上限倍数；守常=不灌注）
+const SHIELD_POUR_MULT := [1.0, 1.25, 1.5]    # 费率段单价：罩≤100% 段 1:1 / 100~125% 段 1.25× / 125~150% 段 1.5×（先填低价段）
+# —— 受伤程度链（v0.5《战斗系统》§5.3——破防余量 → 肉身强度衰减 → 对气血比例定伤档，不按倍数）——
+const FLESH_ABSORB := {"凡人": 0.15, "练气": 0.2, "筑基": 0.24, "金丹": 0.28}  # 肉身强度衰减率（初值待调）
+const WOUND_LIGHT_RATIO := 0.08  # 有效余量 ≥ 气血上限此比例 → 轻伤（初值待调）
+const WOUND_HEAVY_RATIO := 0.18  # ≥ 此比例 → 重伤；再往上 → 毁（初值待调）
+
 const CELL := 60.0
 # 布局 v0.4：棋盘靠左（占住左侧空白），右侧整列给解说与按钮（见 HUD）
 const ORIGIN := Vector2(20, 72)
@@ -71,6 +91,11 @@ var _stat := {}
 var _battle_turns := 0
 # 招式特效（P0 程序化占位——《多媒体资产清单》§1.1；P1 换帧动画只替换 _draw_fx 与素材）
 var _fx: Array[Dictionary] = []  # {kind, t, dur, a: Vector2, b: Vector2, color, text}
+# —— v0.5 策略与掷骰（部位策略循环档 / 护体档持久在单位上；B 红线：新掷骰一律走 _rng，--seed 可回放）——
+var _part_strategy := "自动"     # 部位策略：自动/随机/手动/重点（玩家侧；AI 恒用 _ai_pick_part）
+var _focus_part := ""            # 重点策略锁定的部位（该部位毁则自动退回「自动」）
+var _part_pick_mode := ""        # 部位行弹出用途："" 无 / "focus" 重点锁定 / "attack" 手动出招待点选（防两套弹窗串台）
+var _rng := RandomNumberGenerator.new()
 
 
 func _stat_bump(key: String) -> void:
@@ -78,11 +103,16 @@ func _stat_bump(key: String) -> void:
 
 
 func _ready() -> void:
-	_shot_mode = "--shot" in OS.get_cmdline_user_args()
-	_shot_fx_mode = "--fxshot" in OS.get_cmdline_user_args()
-	_autoplay = "--autoplay" in OS.get_cmdline_user_args()
+	var user_args := OS.get_cmdline_user_args()
+	_shot_mode = "--shot" in user_args
+	_shot_fx_mode = "--fxshot" in user_args
+	_autoplay = "--autoplay" in user_args
 	if _autoplay:
 		Engine.time_scale = 4.0  # 自对弈加速（挂机长跑更快出结果）
+	# v0.5：--seed N 注入战斗内掷骰（B 红线：确定性内核可回放——新掷骰全走 _rng）
+	var seed_i := user_args.find("--seed")
+	if seed_i >= 0 and seed_i + 1 < user_args.size():
+		_rng.seed = int(user_args[seed_i + 1])
 	randomize()
 	# 场景重载后 autoload 子系统残留上一场状态——先清场（否则时序冻结、单位堆积）
 	UnitSystem.reset_all()
@@ -123,6 +153,17 @@ func _ready() -> void:
 	player.stance = "招架"
 	opponent.guard_parts = ["头部", "丹田"]
 	opponent.stance = "招架"
+	# —— v0.5 开战初始化：护体玄气满罩（对峙先互相轰罩）；双方视觉朝向相对（贴图镜像）——
+	player.shield_cur = 0.0  # _recalc_shield 只限幅不补——先归零再满罩
+	opponent.shield_cur = 0.0
+	_recalc_shield(player)
+	_recalc_shield(opponent)
+	player.shield_cur = player.shield_max
+	opponent.shield_cur = opponent.shield_max
+	player.shield_strategy = "守常"
+	opponent.shield_strategy = "守常"
+	player.vis_facing = 1.0 if opponent.pos.x > player.pos.x else -1.0
+	opponent.vis_facing = -player.vis_facing if opponent.pos.x != player.pos.x else 1.0
 	# 表现层初始化：绘制位置 = 逻辑格中心（移动插值起点）
 	player.render_pos = _cell_center(player.pos)
 	opponent.render_pos = _cell_center(opponent.pos)
@@ -141,6 +182,8 @@ func _ready() -> void:
 	hud.guard_part_toggled.connect(_on_guard_part_toggled)
 	hud.guard_stance_selected.connect(_on_guard_stance_selected)
 	hud.guard_cancel.connect(_on_guard_cancel)
+	hud.strategy_cycled.connect(_on_strategy_cycled)
+	hud.shield_strategy_cycled.connect(_on_shield_strategy_cycled)
 	hud.restart_requested.connect(_on_restart)
 	EventBus.battle_started.emit()
 	_say(Nar.start())
@@ -163,6 +206,7 @@ func _mount(u: Unit, main_tech: Technique, move_techs: Array) -> void:
 	u.base_pool_max = _pool_max_snapshot(u.pools)
 	_recalc_stats(u)
 	_recalc_pools(u)
+	_recalc_shield(u)
 
 
 func _pool_max_snapshot(pools: Dictionary) -> Dictionary:
@@ -194,6 +238,61 @@ func _recalc_pools(u: Unit) -> void:
 		var p: Dictionary = u.pools[pool]
 		p.max = u.base_pool_max[pool] + extra
 		p.cur = minf(p.cur, p.max)
+
+
+## 罩上限 = 境界基数 + 主修/激活功法 bonus_shield + 修为称号档×SHIELD_PER_PROF（v0.5 §5.1.5）
+## cur 只限幅不回补——补充走护体策略（§5.2），开局满罩由 _ready 显式灌满
+func _recalc_shield(u: Unit) -> void:
+	var tech: Technique = u.active_technique
+	var prof: float = u.technique_proficiency.get(tech.id if tech != null else "", 0.0)
+	u.shield_max = SHIELD_REALM.get(u.realm, 30.0) + _mount_bonus(u, "bonus_shield") + float(Grades.tier(prof)) * SHIELD_PER_PROF
+	u.shield_cur = minf(u.shield_cur, u.shield_max)
+
+
+# ---------- 护体策略制（v0.5 §5.2：宣言制择档、回合末结算、档位持久沿用） ----------
+
+## 换档（自己行动窗口内宣言，不立即结算；解说+确认音）
+func _set_shield_strategy(u: Unit, s: String) -> void:
+	if u.shield_strategy == s:
+		return
+	u.shield_strategy = s
+	_say(Nar.shield_strategy_set(u))
+	AudioManager.sfx("凝护")
+
+
+## 回合末结算：按当前档补罩——≤100% 段 1 玄力:1 罩 / 100~125% 段 1.25× / 125~150% 段 1.5×
+## （先填低价段；玄力不足按可支付额部分补；择低档不放气——罩高于新档目标时原样留存）
+func _apply_shield_strategy(u: Unit) -> void:
+	var pct: float = SHIELD_STRATEGY_PCT.get(u.shield_strategy, 0.0)
+	if pct <= 0.0:
+		return  # 守常：不灌注
+	var target: float = u.shield_max * pct
+	if u.shield_cur >= target:
+		return  # 罩已达目标（含超量）——不补也不放
+	var xuan := ResourceSystem.current(u, "玄力")
+	if xuan < 1.0:
+		return
+	var poured := 0.0
+	var limits := [u.shield_max, u.shield_max * 1.25, u.shield_max * 1.5]  # 费率段上界
+	for zi in limits.size():
+		var seg: float = minf(target, limits[zi]) - u.shield_cur
+		if seg <= 0.0:
+			continue
+		var need: float = seg * SHIELD_POUR_MULT[zi]
+		if xuan >= need:
+			u.shield_cur += seg
+			poured += seg
+			xuan -= need
+			ResourceSystem.drain(u, "玄力", need)
+		else:
+			u.shield_cur += xuan / SHIELD_POUR_MULT[zi]
+			poured += xuan / SHIELD_POUR_MULT[zi]
+			ResourceSystem.drain(u, "玄力", xuan)
+			break
+	if poured > 0.0:
+		_say(Nar.shield_pour(u, poured))
+		AudioManager.sfx("凝护")
+		_stat_bump("shield_pour")
 
 
 func _mount_bonus(u: Unit, field: String) -> float:
@@ -248,6 +347,9 @@ func _on_unit_ready(u: Unit) -> void:
 		_recalc_stats(u)
 	u.items_used_this_turn.clear()  # 丹药每回合每种限用一次
 	_tick_cooldowns(u)
+	# —— v0.5 护体维持费（罩>0 时每回合 1 玄力，各档同付；玄力空免扣不衰减）——
+	if u.shield_cur > 0.0:
+		ResourceSystem.drain(u, "玄力", SHIELD_UPKEEP)
 	# —— 回合结算：失血与持续状态（按回合，不按实时——挂机不会流血而死）——
 	var bleed: float = BodySystem.bleed_amount(u)
 	if bleed > 0.0:
@@ -289,6 +391,7 @@ func _tick_cooldowns(u: Unit) -> void:
 
 
 func _end_turn(u: Unit) -> void:
+	_apply_shield_strategy(u)  # v0.5 §5.2：回合末按护体策略档结算补罩（先于对方行动生效；档位持久沿用）
 	u.move_left = 0
 	current_acted = false
 	pending_move = null
@@ -322,25 +425,110 @@ func _try_move(u: Unit, cell: Vector2i) -> void:
 	if BodySystem.leg_penalty(u) == 3:
 		_say(Nar.legs_destroyed(u))
 		return
-	var dist := _manhattan(u.pos, cell)
-	if dist > u.move_left:
+	var enemy: Unit = opponent if u == player else player
+	_walk(u, enemy, cell, _move_graph(u, enemy, u.move_left), u.move_left)
+
+
+# ---------- 走位工具（v0.5《战斗系统》§1.1：威胁区带权步 + 几何背向） ----------
+
+## 威胁区判定：敌方武器攻击半径内的格子（区内**逼近**（距敌变近）步价 ×2——正面扑脸要付代价；
+## 区内横移/后撤只计 1 步——贴着刀锋绕弧、抽身后撤不被罚，绕后才是可行的战术承诺）
+func _in_threat(cell: Vector2i, enemy: Unit) -> bool:
+	var w: String = "空手" if enemy.weapon_disarmed else enemy.weapon
+	return _chebyshev(cell, enemy.pos) <= THREAT_RANGE_FLOOR + WeaponData.range_bonus(w)
+
+
+## 绕后判定（v0.5 §5.1.7）：守方有几何背向（最近一次移动方向）且攻方在其来路对侧——
+## (守.pos − 攻.pos) · 守.geo_facing > 0；从未移动的单位没有背（龟缩不可绕，但放弃走位主动权）
+func _is_flanking(attacker: Unit, target: Unit) -> bool:
+	var g: Vector2i = target.geo_facing
+	if g == Vector2i.ZERO:
+		return false
+	var vec: Vector2i = target.pos - attacker.pos
+	return vec.x * g.x + vec.y * g.y > 0
+
+
+## 带权步最短路（10×10 小棋盘朴素 Dijkstra）：区外 1、区内逼近 2、区内横退 1（方向化，见 _in_threat）。
+## 返回 {dist: {格: 步数}, prev: {格: 前驱}}——dist 只收录预算内可达格；步数即体力点数
+func _move_graph(u: Unit, enemy: Unit, budget: int) -> Dictionary:
+	var dist := {u.pos: 0}
+	var prev := {}
+	var open := [u.pos]
+	while not open.is_empty():
+		var cur: Vector2i = open[0]
+		var ci := 0
+		for i in range(1, open.size()):
+			if dist[open[i]] < dist[cur]:
+				cur = open[i]
+				ci = i
+		open.remove_at(ci)
+		var cd: int = dist[cur]
+		if cd >= budget:
+			continue
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var np: Vector2i = cur + d
+			if not FieldSystem.in_bounds(np) or np == enemy.pos:
+				continue
+			# v0.5 威胁步方向化：区内逼近（距敌变近）2 步——横移/后撤只 1 步，绕弧可行
+			var nd: int = cd + 1
+			if _in_threat(np, enemy) and _chebyshev(np, enemy.pos) < _chebyshev(cur, enemy.pos):
+				nd += 1
+			if nd <= budget and nd < dist.get(np, 1 << 30):
+				dist[np] = nd
+				prev[np] = cur
+				open.append(np)
+	return {"dist": dist, "prev": prev}
+
+
+## 由前驱表还原路径（格数组，不含起点；不可达返回空）——沿前驱链回溯到起点（起点无前驱）
+func _path_from(g: Dictionary, goal: Vector2i) -> Array:
+	var prev: Dictionary = g.prev
+	if not prev.has(goal):
+		return []
+	var path: Array = []
+	var cur := goal
+	while prev.has(cur):
+		path.push_front(cur)
+		cur = prev[cur]
+	return path
+
+
+## 执行走位：体力/步数双扣、pos 落点、朝向与几何背向更新、特效解说
+func _walk(u: Unit, enemy: Unit, goal: Vector2i, g: Dictionary, budget: int) -> void:
+	if not g.dist.has(goal) or int(g.dist[goal]) > budget:
 		return
-	var cost := float(dist) * MOVE_STAMINA_COST
-	if ResourceSystem.current(u, "体力") < cost:
+	var path: Array = _path_from(g, goal)
+	if path.is_empty():
+		return
+	var cost: int = g.dist[goal]
+	if ResourceSystem.current(u, "体力") < float(cost) * MOVE_STAMINA_COST:
 		_say(Nar.move_fail(u))
 		return
-	var old_center := _cell_center(u.pos)
-	ResourceSystem.drain(u, "体力", cost)
-	u.pos = cell
-	u.move_left -= dist
+	var from := u.pos
+	var old_center := _cell_center(from)
+	ResourceSystem.drain(u, "体力", float(cost) * MOVE_STAMINA_COST)
+	u.pos = goal
+	u.move_left -= cost
+	_update_facing(u, path, from)
 	hud.clear_parts()
 	hud.clear_moves()
-	_say(Nar.move(u, dist))
+	_say(Nar.move(u, cost))
 	AudioManager.sfx("移动")
-	_spawn_fx("move", old_center, _cell_center(cell))
-	if current_acted and u.move_left <= 0:
+	_spawn_fx("move", old_center, _cell_center(goal))
+	if current_acted and u.move_left <= 0 and u == player:
 		_say(Nar.turn_auto_end(u))
 		_end_turn(u)
+
+
+## 朝向更新（v0.5 §1.1）：视觉朝向 = 本次位移的水平方向（同列移动不翻转）；
+## 几何背向 = 最后一次落步的方向（站着不动=无背——龟缩不可绕，守势期走位是绕后唯一来源）
+func _update_facing(u: Unit, path: Array, from: Vector2i) -> void:
+	var to_cell: Vector2i = path[-1]
+	var prev_cell: Vector2i = path[-2] if path.size() >= 2 else from
+	var dir: Vector2i = to_cell - prev_cell
+	u.geo_facing = dir
+	if dir.x != 0.0:
+		u.vis_facing = 1.0 if dir.x > 0 else -1.0
 
 
 ## 普攻：英雄坛说式——从当前功法招式池随机出一招
@@ -356,8 +544,7 @@ func _on_attack_requested() -> void:
 	if not _in_range(player, opponent, move):
 		_say(Nar.out_of_range(player.move_left))
 		return
-	pending_move = move
-	hud.set_parts(opponent)
+	_resolve_part_and_attack(move)  # v0.5：按部位策略直接出手（手动档才弹部位行）
 
 
 ## 招式面板：侠客风云传式——手动选招（带冷却）
@@ -390,23 +577,118 @@ func _on_move_selected(move_id: String) -> void:
 		_say(Nar.out_of_range(player.move_left))
 		hud.clear_moves()
 		return
-	pending_move = move
 	hud.clear_moves()
-	hud.set_parts(opponent)
+	_resolve_part_and_attack(move)  # v0.5：按部位策略直接出手（手动档才弹部位行）
 
 
 func _on_part_selected(part: String) -> void:
-	if current_actor != player or current_acted:
+	if current_actor != player:
 		return
-	if pending_move == null:
+	if _part_pick_mode == "focus":
+		# 重点策略：点选一次锁定重点部位（不占行动、不出招）
+		_part_pick_mode = ""
+		_focus_part = part
+		hud.clear_parts()
+		_say(Nar.focus_part_set(player, part))
+		return
+	if current_acted:
+		return
+	if _part_pick_mode != "attack" or pending_move == null:
+		hud.clear_parts()  # 弹窗用途已失效（被守势/换招顶掉）——清行不误出招
 		return
 	var move: Move = pending_move
 	pending_move = null
+	_part_pick_mode = ""
+	hud.clear_parts()
 	_do_attack(player, opponent, part, move, hud.rule_toggle.button_pressed)
 	current_acted = true
 	if player.move_left <= 0:
 		_say(Nar.turn_auto_end(player))
 		_end_turn(player)
+
+
+# ---------- 部位策略制（v0.5 §6：自动/随机/手动/重点循环——每击不再强制手选部位） ----------
+
+## 策略按钮循环（标签随档变；「重点」无有效部位时弹部位行选一次，锁定后不复弹）
+func _on_strategy_cycled() -> void:
+	if battle_over or current_actor != player or _guard_selecting:
+		return  # 守势选择中部位行被占——不打断，忽略
+	var order := ["自动", "随机", "手动", "重点"]
+	_part_strategy = order[(order.find(_part_strategy) + 1) % order.size()]
+	pending_move = null
+	_part_pick_mode = ""
+	hud.clear_parts()
+	hud.clear_moves()
+	if _part_strategy == "重点" and not _focus_valid():
+		_part_pick_mode = "focus"
+		hud.set_parts(opponent)
+		_say(Nar.focus_part_pick())
+	elif _part_strategy == "重点":
+		_say(Nar.focus_part_keep(player, _focus_part))
+	else:
+		_say(Nar.strategy_set(player, _part_strategy))
+
+
+## 护体策略按钮循环（守常/周天/凝罡/守一——宣言不立即结算，本回合末自动按档补罩；档位持久沿用）
+func _on_shield_strategy_cycled() -> void:
+	if battle_over or current_actor != player:
+		return
+	var order := ["守常", "周天", "凝罡", "守一"]
+	_set_shield_strategy(player, order[(order.find(player.shield_strategy) + 1) % order.size()])
+
+
+## 出招出口：手动档 → 弹部位行等点选（旧流程保留）；其余档按策略定部位直接出手
+func _resolve_part_and_attack(move: Move) -> void:
+	if _part_strategy == "手动":
+		pending_move = move
+		_part_pick_mode = "attack"
+		hud.set_parts(opponent)
+		return
+	hud.clear_parts()  # 弹窗还开着（如重点锁定中）——出招即收起
+	_part_pick_mode = ""
+	_do_attack(player, opponent, _part_by_strategy(move), move, hud.rule_toggle.button_pressed)
+	current_acted = true
+	if player.move_left <= 0:
+		_say(Nar.turn_auto_end(player))
+		_end_turn(player)
+
+
+## 按当前策略定出手部位（v0.5：重点部位打毁 → 自动退回「自动」并解说）
+func _part_by_strategy(move: Move) -> String:
+	if _part_strategy == "重点":
+		if _focus_valid():
+			return _focus_part
+		_part_strategy = "自动"
+		_focus_part = ""
+		_say(Nar.focus_part_lost())
+	elif _part_strategy == "随机":
+		var alive: Array[String] = []
+		for p in opponent.body:
+			if int(opponent.body[p].state) != BodySystem.PartState.DESTROYED:
+				alive.append(p)
+		if not alive.is_empty():
+			return alive[randi() % alive.size()]
+	return _auto_pick_part()  # 「自动」= AI 选部位脑确定性化（双方公平同款优先级）
+
+
+## 自动策略脑（确定性）：未守势要害 → 未守势部位 → 兜底（无随机——可回放）
+func _auto_pick_part() -> String:
+	for p in opponent.body:
+		if int(opponent.body[p].state) != BodySystem.PartState.DESTROYED and opponent.body[p].vital \
+				and not opponent.guard_parts.has(p):
+			return p
+	for p in opponent.body:
+		if int(opponent.body[p].state) != BodySystem.PartState.DESTROYED and not opponent.guard_parts.has(p):
+			return p
+	return "胸腹"
+
+
+func _focus_valid() -> bool:
+	return (
+		_focus_part != ""
+		and opponent.body.has(_focus_part)
+		and int(opponent.body[_focus_part].state) != BodySystem.PartState.DESTROYED
+	)
 
 
 ## 切换招式功法（耗体力，不算出招；主修玄术不可切换——挂载规则）
@@ -517,10 +799,19 @@ func _ai_act_async(u: Unit) -> void:
 	if u.stance == "":
 		_ai_declare_guard(u)
 	var target: Unit = player if u == opponent else opponent
-	# 1) 不在最远可用招式射程内 → 逼近（移动先行，侠客风云传式）
+	# 0b) v0.5 护体策略档（罩不满且玄力过半 → 周天回满；否则守常省玄力——持久沿用、回合末同出口结算）
+	_ai_pick_shield_strategy(u)
+	# 1) 走位（v0.5 带权步：敌方威胁区内**逼近**双倍步价，横退单倍）——重伤流血小撤退（拉开吃药不出招，给对手绕后窗口）
+	if _ai_retreat_condition(u):
+		_ai_retreat(u, target)
+		_do_item(u)
+		_end_turn(u)
+		return
 	var want_range := _max_ready_range(u)
 	if _chebyshev(u.pos, target.pos) > want_range:
-		_ai_move_toward(u, target, want_range)
+		_ai_approach(u, target, want_range)  # 射程外 → 带权最短路逼近（最后贴脸段付双倍步价）
+	elif _rng.randf() < 0.3:
+		_flank_opportunity(u, target, want_range)  # 射程内 → 概率尝试绕背（成败都照常出招）
 	# 2) 丹药不占行动——流血先吃药（每回合每种限一次），再出招
 	if _bleeding(u) and int(u.items.get("止血丹", 0)) > 0 and int(u.items_used_this_turn.get("止血丹", 0)) < 1 and randf() < 0.3:
 		_do_item(u)
@@ -537,6 +828,61 @@ func _ai_act_async(u: Unit) -> void:
 			_do_attack(u, target, _ai_pick_part(u, target), move, infuse)
 			current_acted = true
 	_end_turn(u)
+
+
+## v0.5 护体策略档决策：罩低于上限且玄力过半 → 抬到周天（回合末自动补满，费率 1:1）；否则回落守常省玄力
+func _ai_pick_shield_strategy(u: Unit) -> void:
+	var want_pour: bool = (
+		u.shield_cur < u.shield_max - 1.0
+		and ResourceSystem.current(u, "玄力") > 0.5 * float(u.pools["玄力"]["max"])
+	)
+	_set_shield_strategy(u, "周天" if want_pour else "守常")
+
+
+## v0.5 小撤退条件：气血<35% 且失血未止且体力>40 → 拉开吃药、本回合不出招
+func _ai_retreat_condition(u: Unit) -> bool:
+	return (
+		ResourceSystem.current(u, "气血") < 0.35 * float(u.pools["气血"]["max"])
+		and _bleeding(u)
+		and ResourceSystem.current(u, "体力") > 40.0
+	)
+
+
+## 小撤退执行：选可达最远格（同远者优先站到威胁区外）拉远——付威胁费也值得，命要紧
+func _ai_retreat(u: Unit, target: Unit) -> void:
+	var g: Dictionary = _move_graph(u, target, u.move_left)
+	var goal := Vector2i(-1, -1)
+	var best_score := 0
+	for c in g.dist.keys():
+		if c == target.pos:
+			continue
+		var d := _chebyshev(c, target.pos)
+		var score: int = d * 10 - (2 if _in_threat(c, target) else 0)
+		if score > best_score:
+			best_score = score
+			goal = c
+	if goal.x >= 0 and _chebyshev(goal, target.pos) > _chebyshev(u.pos, target.pos):
+		_walk(u, target, goal, g, u.move_left)
+	else:
+		_say(Nar.no_retreat_room(u))
+
+
+## v0.5 绕后尝试：守方有几何背向且其背后贴身格可达 → 走过去再出招（绕后判定在 _do_attack 现算）；
+## 已然在背后则直接打。返回是否已绕到背后
+func _flank_opportunity(u: Unit, target: Unit, want_range: int) -> bool:
+	if target.geo_facing == Vector2i.ZERO or _chebyshev(u.pos, target.pos) > want_range:
+		return false
+	if _is_flanking(u, target):
+		return true  # 站位已在其身后——无需走位
+	var g: Dictionary = _move_graph(u, target, u.move_left)
+	for c in g.dist.keys():
+		if c == target.pos:
+			continue
+		var vec: Vector2i = target.pos - c
+		if _chebyshev(c, target.pos) == 1 and vec.x * target.geo_facing.x + vec.y * target.geo_facing.y > 0:
+			_walk(u, target, c, g, u.move_left)  # 背后贴身格
+			return true
+	return false
 
 
 ## AI 守势：保护自己最危险的两个要害，招架架势（§5.1）
@@ -576,32 +922,32 @@ func _ai_pick_part(u: Unit, target: Unit) -> String:
 	return candidates[randi() % candidates.size()]
 
 
-## 简单贪婪逼近：每步选择切比雪夫距离缩小的相邻格，进入射程即停
-func _ai_move_toward(u: Unit, target: Unit, want_range: int) -> void:
-	var steps := 0
-	var start := _cell_center(u.pos)
-	while steps < u.move_left and _chebyshev(u.pos, target.pos) > want_range:
-		if ResourceSystem.current(u, "体力") < MOVE_STAMINA_COST:
-			break
-		var best := u.pos
-		var best_d := _chebyshev(u.pos, target.pos)
-		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			var np: Vector2i = u.pos + d
-			if not FieldSystem.in_bounds(np) or np == target.pos:
+## 逼近（v0.5 带权最短路）：目标 = 可达的射程边界格（chebyshev==want_range，语义同旧贪婪版——
+## 恰好站进射程就停）；边界格不可达则尽量走到最近的可达格。结算交给 _walk（步数/体力/朝向）
+func _ai_approach(u: Unit, target: Unit, want_range: int) -> void:
+	var g: Dictionary = _move_graph(u, target, u.move_left)
+	var cur_d: int = _chebyshev(u.pos, target.pos)
+	var goal := Vector2i(-1, -1)
+	var best_cost := 1 << 30
+	for c in g.dist.keys():
+		if c == target.pos:
+			continue
+		if _chebyshev(c, target.pos) == want_range and int(g.dist[c]) < best_cost:
+			goal = c
+			best_cost = g.dist[c]
+	if goal.x < 0:
+		# 射程边界够不到：选最接近的可达格（距离同取步数少者）
+		var best_d := cur_d
+		for c in g.dist.keys():
+			if c == target.pos:
 				continue
-			var nd := _chebyshev(np, target.pos)
-			if nd < best_d:
-				best = np
-				best_d = nd
-		if best == u.pos:
-			break
-		u.pos = best
-		steps += 1
-	if steps > 0:
-		ResourceSystem.drain(u, "体力", float(steps) * MOVE_STAMINA_COST)
-		_say(Nar.move(u, steps))
-		AudioManager.sfx("移动")
-		_spawn_fx("move", start, _cell_center(u.pos))
+			var cd: int = _chebyshev(c, target.pos)
+			if cd < best_d or (cd == best_d and int(g.dist[c]) < best_cost):
+				goal = c
+				best_d = cd
+				best_cost = g.dist[c]
+	if goal.x >= 0 and _chebyshev(goal, target.pos) < cur_d:
+		_walk(u, target, goal, g, u.move_left)
 
 
 # ---------- 行动结算：四层防御链（§5.1） ----------
@@ -623,6 +969,16 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 	if not ResourceSystem.spend(attacker, move.cost_pool, move.cost_amount):
 		_say(Nar.no_stamina(attacker, move.cost_pool, move))
 		return
+	# —— v0.5 朝向与绕后（§1.1/§5.1.7）：出动作先转向对手（同一纵轴保持上一步朝向）；
+	# 几何背向 = 守方最近一次移动方向，攻方在其来路对侧即绕后（视觉与几何分离——转身不消除背）——
+	var dx_facing: int = target.pos.x - attacker.pos.x
+	if dx_facing != 0:
+		attacker.vis_facing = 1.0 if dx_facing > 0 else -1.0
+		target.vis_facing = -attacker.vis_facing
+	var flank: bool = _is_flanking(attacker, target)
+	if flank:
+		_say(Nar.flank(attacker, target))
+		_stat_bump("flank")
 	# 大招：出招即倾尽剑意（代价前置——无论命中与否，§3）
 	if move.move_type == "大招":
 		attacker.sword_intent = 0
@@ -638,6 +994,7 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 	var def_speed: float = (
 		(target.speed + target.agility * 0.5 + dodge_bonus)
 		* ResourceSystem.stamina_penalty(target) * StatusSystem.speed_modifier(target) * iron_dodge
+		* (FLANK_SPEED_MULT if flank else 1.0)  # v0.5 绕后：被绕者防速 ×0.7
 	)
 	# —— 规则维度（《战斗系统》§4.1）：融入规则，粗分阶差≥1=碾压 ——
 	var rule_bonus := 0.0
@@ -668,8 +1025,9 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 		return
 	# —— ② 招架层（守势覆盖 / 招架架势）——
 	# 注：招架只挡物理招式（兵器/拳脚）——玄术/神魂无实体可格（§5.1.3 修订）
+	# v0.5 绕后：招架层失效——背后看不见来剑（守势集中护体加成同由 flank 关断，见 _apply_hit）
 	var physical: bool = attacker.active_technique != null and attacker.active_technique.category in ["兵器", "拳脚"]
-	if physical and (target.guard_parts.has(part) or target.stance == "招架"):
+	if physical and not flank and (target.guard_parts.has(part) or target.stance == "招架"):
 		if realm_d >= 1:
 			# 战力差距阶梯：差一阶招架必破（§5.1.3）
 			_say(Nar.crush_guard(attacker, target))
@@ -720,70 +1078,110 @@ func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused:
 					_say(Nar.substitute_fail(attacker, target, part))
 					_stat_bump("sub_fail")
 	# —— ④ 护体层（破防模型，按部位——§5 + §5.1.5）——
-	_apply_hit(attacker, target, part, move, realm_d)
+	_apply_hit(attacker, target, part, move, realm_d, flank)
 	_apply_cooldown(attacker, move)
 
 
-## ④ 护体层：攻击力 × 招式 × 熟练度档 vs 该部位有效防御（守势集中/铁壁加成）
-## 境界差≥2 → 护体形同虚设、部位伤害加深一档（§5.1.3 战力差距阶梯）
-func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d: int) -> void:
+## ④ 护体层 + 肉身伤势（v0.5《战斗系统》§5.1.5 罩层 / §5.3 受伤程度链）：
+## 破防（ap > 有效护体）→ 先耗罩（罩足=护体受震，无创伤无流血；告破后余量才进肉身）→
+## 肉身强度二次衰减 → 对气血比例定伤档（不按倍数）；未破防：相近磨防、差距大无伤。
+## 罩层在 armor 之外且只在破防时耗（磨防走 armor，数值简单）；境界差≥2 → 罩与肉身形同虚设（§5.1.3）。
+## v0.5 绕后：守势集中（guard_parts/铁壁）护体加成只对正面对敌生效——flank 时看不见来剑。
+func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d: int, flank: bool) -> void:
 	var ap: float = attacker.attack_power * move.power_mod * _prof_coeff(attacker)
 	var armor: float = target.armor
 	if realm_d >= 2:
 		armor = 0.0
-	elif target.guard_parts.has(part):
+	elif target.guard_parts.has(part) and not flank:
 		armor *= IRON_ARMOR_MULT if target.stance == "铁壁" else GUARD_ARMOR_MULT
-	var severity: int = 2 if realm_d >= 2 else 1
-	if ap > armor:
-		_say(Nar.attack_break(attacker, target, attacker.active_technique, move, part))
-		var cat: String = attacker.active_technique.category if attacker.active_technique != null else ""
-		var tc: Vector2 = _cell_center(target.pos)
-		var ac: Vector2 = _cell_center(attacker.pos)
-		# 特效与音效同点（视听同点——P1 换帧动画只替换 _draw_fx）
-		if move.move_type == "大招":
-			AudioManager.sfx("大招")
-			_spawn_fx("hit", tc, tc, {"color": Color(0.2, 0.55, 0.6)})
+	var tc: Vector2 = _cell_center(target.pos)
+	var ac: Vector2 = _cell_center(attacker.pos)
+	if ap <= armor:
+		# —— 未破防：相近磨防（-4，永不回） / 差距大无伤 ——
+		if target.armor - ap <= WEAR_THRESHOLD:
+			target.armor = maxf(target.armor - ARMOR_WEAR, 0.0)
+			_say(Nar.wear(attacker, target))
+			AudioManager.sfx("磨防")
+			_spawn_fx("wear", tc, tc)
 		else:
-			AudioManager.sfx({"兵器": "剑击", "拳脚": "钝击", "玄术": "火浪"}.get(cat, "剑击"))
-			match cat:
-				"兵器":
-					_spawn_fx("slash", ac, tc)
-				"玄术":
-					_spawn_fx("fire", ac, tc)
-			var hit_col: Color = {
-				"兵器": Color(0.2, 0.55, 0.6), "拳脚": Color(0.75, 0.6, 0.3), "玄术": Color(0.85, 0.35, 0.12),
-			}.get(cat, Color(0.2, 0.55, 0.6))
-			_spawn_fx("hit", tc, tc, {"color": hit_col})
-		BodySystem.hurt(target, part, severity)
-		# 主臂被毁 → 自动换手（§2.5）
-		if part == target.main_arm and int(target.body[part].state) == BodySystem.PartState.DESTROYED:
-			if BodySystem.switch_main_arm(target):
-				_say(Nar.switch_hand(target))
-				_stat_bump("switch_hand")
-		_recalc_stats(target)  # 伤效即时生效
-		# 功法修为精进（命中 +5，一称号档）
-		_gain_proficiency(attacker)
-		# 剑意结算（《功法系统》§3：按谱命中积累/乱序不积/被打断清空）
-		_on_intent_hit(attacker, move)
-		# 要害被毁（一击毙命途）
-		var b: Dictionary = target.body[part]
-		if b.state == BodySystem.PartState.DESTROYED and b.vital:
-			_say(Nar.attack_vital(attacker, target, part))
-		# 招式机制标签
-		if "灼烧" in move.effects:
-			StatusSystem.add_status(target, "灼烧", 3)
-			_say(Nar.burn(target))
-			AudioManager.sfx("灼烧")
-			_spawn_fx("burn", _cell_center(target.pos), _cell_center(target.pos))
-	elif target.armor - ap <= WEAR_THRESHOLD:
-		target.armor = maxf(target.armor - ARMOR_WEAR, 0.0)
-		_say(Nar.wear(attacker, target))
-		AudioManager.sfx("磨防")
-		_spawn_fx("wear", _cell_center(target.pos), _cell_center(target.pos))
+			_say(Nar.no_damage(attacker, target))
+			AudioManager.sfx("无伤")
+			_spawn_fx("block", tc, tc)
+		return
+	# —— ④a 护体玄气层（罩先耗——罩是破防余量的缓冲带）——
+	var net: float = ap - armor
+	if realm_d < 2 and target.shield_cur > 0.0:
+		var absorb: float = minf(target.shield_cur, net)
+		target.shield_cur = maxf(0.0, target.shield_cur - absorb)
+		net -= absorb
+		_stat_bump("shield_absorb")
+		if target.shield_cur <= 0.0 and not target.shield_broken_noted:
+			target.shield_broken_noted = true  # 罩首次归零解说一次（此后破防直伤肉身）
+			_say(Nar.shield_break(target))
+			AudioManager.sfx("破罩")
+			_spawn_fx("break", tc, tc)
+			_stat_bump("shield_break")
+		if net <= 0.0:
+			# 护体受震——伤不及体：无创伤无流血（剑意同被招架而溃）
+			_say(Nar.shield_hit(attacker, target))
+			AudioManager.sfx("护体")
+			_spawn_fx("wear", tc, tc, {"text": "护体受震"})
+			_break_intent(attacker)
+			return
+	# —— ④b 受伤程度链（不按倍数：余量 → 肉身强度二次衰减 → 对气血比例定档）——
+	var net2: float = net if realm_d >= 2 else net * (1.0 - FLESH_ABSORB.get(target.realm, 0.2))
+	var qi_max: float = maxf(float(target.pools["气血"]["max"]), 1.0)
+	var r: float = net2 / qi_max
+	var severity: int = 1 if r < WOUND_LIGHT_RATIO else (2 if r < WOUND_HEAVY_RATIO else 3)
+	if realm_d >= 2:
+		severity = maxi(severity, 2)  # 战力差距阶梯伤害加深底线保留（§5.1.3）
+	_say(Nar.attack_break(attacker, target, attacker.active_technique, move, part))
+	var cat: String = attacker.active_technique.category if attacker.active_technique != null else ""
+	# 特效与音效同点（视听同点——P1 换帧动画只替换 _draw_fx）
+	if move.move_type == "大招":
+		AudioManager.sfx("大招")
+		_spawn_fx("hit", tc, tc, {"color": Color(0.2, 0.55, 0.6)})
 	else:
-		_say(Nar.no_damage(attacker, target))
-		AudioManager.sfx("无伤")
-		_spawn_fx("block", _cell_center(target.pos), _cell_center(target.pos))
+		AudioManager.sfx({"兵器": "剑击", "拳脚": "钝击", "玄术": "火浪"}.get(cat, "剑击"))
+		match cat:
+			"兵器":
+				_spawn_fx("slash", ac, tc)
+			"玄术":
+				_spawn_fx("fire", ac, tc)
+		var hit_col: Color = {
+			"兵器": Color(0.2, 0.55, 0.6), "拳脚": Color(0.75, 0.6, 0.3), "玄术": Color(0.85, 0.35, 0.12),
+		}.get(cat, Color(0.2, 0.55, 0.6))
+		_spawn_fx("hit", tc, tc, {"color": hit_col})
+	BodySystem.hurt(target, part, severity)
+	# —— 流血掷骰（v0.5 §2.3：edge 锋利度 × blade 刃长 × 部位状态——纯刃必流 / 钝器大概率不流）——
+	var weapon: String = "空手" if attacker.weapon_disarmed else attacker.weapon
+	if cat in ["兵器", "拳脚"]:
+		var p_bleed: float = minf(1.0, EDGE_P[WeaponData.edge(weapon)]
+			* BLADE_MULT[WeaponData.blade(weapon)] * SEV_BLEED_MULT.get(int(target.body[part].state), 0.6))
+		if _rng.randf() < p_bleed:
+			BodySystem.set_bleeding(target, part, true)
+			_say(Nar.bleed_wound(attacker, target, part))
+			_stat_bump("bleed_start")
+	# 主臂被毁 → 自动换手（§2.5）
+	if part == target.main_arm and int(target.body[part].state) == BodySystem.PartState.DESTROYED:
+		if BodySystem.switch_main_arm(target):
+			_say(Nar.switch_hand(target))
+			_stat_bump("switch_hand")
+	_recalc_stats(target)  # 伤效即时生效
+	# 功法修为精进（命中 +5，一称号档）
+	_gain_proficiency(attacker)
+	# 剑意结算（《功法系统》§3：按谱命中积累/乱序不积/被打断清空）
+	_on_intent_hit(attacker, move)
+	# 要害被毁（一击毙命途）
+	var b: Dictionary = target.body[part]
+	if b.state == BodySystem.PartState.DESTROYED and b.vital:
+		_say(Nar.attack_vital(attacker, target, part))
+	# 招式机制标签
+	if "灼烧" in move.effects:
+		StatusSystem.add_status(target, "灼烧", 3)
+		_say(Nar.burn(target))
+		AudioManager.sfx("灼烧")
+		_spawn_fx("burn", tc, tc)
 
 
 func _gain_proficiency(u: Unit) -> void:
@@ -1038,10 +1436,6 @@ func _chebyshev(a: Vector2i, b: Vector2i) -> int:
 	return maxi(absi(a.x - b.x), absi(a.y - b.y))
 
 
-func _manhattan(a: Vector2i, b: Vector2i) -> int:
-	return absi(a.x - b.x) + absi(a.y - b.y)
-
-
 func _pixel_to_cell(p: Vector2) -> Vector2i:
 	var cell := Vector2i(floori((p.x - ORIGIN.x) / CELL), floori((p.y - ORIGIN.y) / CELL))
 	if not FieldSystem.in_bounds(cell):
@@ -1170,17 +1564,22 @@ func _draw() -> void:
 		draw_line(
 			ORIGIN + Vector2(0, y * CELL), ORIGIN + Vector2(CELL * FieldSystem.GRID_W, y * CELL),
 			Color(0.35, 0.32, 0.25, 0.22), 1.0)
-	# 可移动范围高亮（玩家回合；双腿已毁则不可移动）
+	# 可移动范围高亮（玩家回合；双腿已毁则不可移动）——v0.5：带权可达集（区内逼近 2 步/横退 1 步）+ 威胁区描边
 	if current_actor == player and not battle_over and BodySystem.leg_penalty(player) != 3:
+		var move_map: Dictionary = _move_graph(player, opponent, player.move_left).dist
 		for x in range(FieldSystem.GRID_W):
 			for y in range(FieldSystem.GRID_H):
 				var c := Vector2i(x, y)
 				if c == player.pos or c == opponent.pos:
 					continue
-				if _manhattan(player.pos, c) <= player.move_left:
+				if move_map.has(c):
 					draw_rect(
 						Rect2(ORIGIN + Vector2(x * CELL + 10.0, y * CELL + 10.0), Vector2(CELL - 20, CELL - 20)),
 						Color(0.35, 0.9, 0.45, 0.18))
+				if _in_threat(c, opponent):
+					draw_rect(
+						Rect2(ORIGIN + Vector2(x * CELL + 4.0, y * CELL + 4.0), Vector2(CELL - 8, CELL - 8)),
+						Color(0.85, 0.25, 0.2, 0.35), false, 1.5)  # 敌方武器威胁区描边——区内朝敌逼近步价 ×2
 	_draw_unit(player, Color(0.4, 0.8, 1.0))
 	_draw_unit(opponent, Color(1.0, 0.45, 0.45))
 	_draw_fx()
@@ -1197,14 +1596,20 @@ func _draw_unit(u: Unit, color: Color) -> void:
 	var top_left := center - Vector2(CELL / 2.0 - 6.0, CELL / 2.0 - 6.0)
 	# 阵营底色（精灵对比度兜底）
 	draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(color, 0.22 * alpha))
-	# 战斗精灵（等比缩入 48×48 格内）
+	# 战斗精灵（等比缩入 48×48 格内）——v0.5 朝向镜像：美术只出一套朝向，经缩放镜像（面右基准，
+	# SPRITE_DIR 修正贴图原始朝向；试玩发现镜像反了只改这一常数，不动资产）
 	var tex: Texture2D = TEX_SPRITES.get(u.id, null)
 	if tex != null:
 		var ts: Vector2 = tex.get_size()
 		var cell_rect := Rect2(top_left, Vector2(CELL - 12, CELL - 12))
 		var k := minf(cell_rect.size.x / ts.x, cell_rect.size.y / ts.y)
 		var draw_size := ts * k
-		draw_texture_rect(tex, Rect2(cell_rect.get_center() - draw_size / 2.0, draw_size), false, Color(1, 1, 1, alpha))
+		var mirrored: bool = u.vis_facing * SPRITE_DIR < 0.0
+		if mirrored:
+			draw_set_transform(cell_rect.get_center(), 0.0, Vector2(-1.0, 1.0))
+		draw_texture_rect(tex, Rect2(-draw_size / 2.0, draw_size), false, Color(1, 1, 1, alpha))
+		if mirrored:
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)  # 复位（后续描边/ATB 条不受镜像）
 	# 当前行动者高亮描边
 	if current_actor == u:
 		draw_rect(Rect2(top_left, Vector2(CELL - 12, CELL - 12)), Color(1.0, 0.9, 0.3, alpha), false, 3.0)

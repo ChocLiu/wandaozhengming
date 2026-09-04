@@ -17,6 +17,8 @@ signal guard_part_toggled(part: String, on: bool)
 signal guard_stance_selected(stance: String)
 signal guard_cancel
 signal restart_requested
+signal strategy_cycled           # v0.5 部位策略循环（自动/随机/手动/重点）
+signal shield_strategy_cycled    # v0.5 护体策略循环（守常/周天/凝罡/守一）
 
 const Grades := preload("res://scripts/cultivation_grades.gd")
 
@@ -61,6 +63,8 @@ var restart_btn: Button
 var switch_btn: Button
 var item_btn: Button
 var guard_btn: Button
+var strategy_btn: Button         # v0.5 部位策略循环按钮（棋盘下方空条）
+var shield_strategy_btn: Button  # v0.5 护体策略循环按钮（棋盘下方空条）
 var _action_buttons: Array[Button] = []
 var _guard_part_buttons: Dictionary = {}   # part -> Button（守势选择面板中）
 var _item_used := false       # 本回合该丹药已用（每回合每种限一次）
@@ -164,6 +168,17 @@ func _ready() -> void:
 	restart_btn.position = Vector2(240, 300)
 	restart_btn.size = Vector2(160, 44)
 	add_child(restart_btn)
+
+	# —— v0.5 棋盘下方空条（12..640 × y678..716）：部位策略 + 护体策略循环按钮（不占操作行）——
+	# 启停不由 enable_actions 管——update_state 每帧按「是否轮到你」设置
+	strategy_btn = _make_button("部位：自动", func(): strategy_cycled.emit())
+	strategy_btn.position = Vector2(12, 678)
+	strategy_btn.disabled = true
+	add_child(strategy_btn)
+	shield_strategy_btn = _make_button("护体：守常", func(): shield_strategy_cycled.emit())
+	shield_strategy_btn.position = Vector2(300, 678)
+	shield_strategy_btn.disabled = true
+	add_child(shield_strategy_btn)
 
 	enable_actions(false)
 
@@ -338,11 +353,11 @@ func update_state(battle) -> void:
 	var hint := ""
 	if actor == battle.player:
 		if battle.current_acted:
-			hint = "▶ 已出招：可继续移动（剩%d步）/ 丹药 / 守势，或点「结束行动」" % actor.move_left
+			hint = "▶ 已出招：可继续移动（剩%d步，红框=对方武器范围，框内朝敌走算2步、横退1步）/ 丹药 / 守势 / 改策略，或「结束行动」" % actor.move_left
 		elif actor.move_left <= 0:
 			hint = "▶ 步数已尽：仍可出招 / 丹药 / 守势——出招后本回合自动结束"
 		else:
-			hint = "▶ 轮到你：点棋盘移动（剩%d步）→ 普攻随机 / 「招式」选招 / 「守势」 / 「切换」 / 丹药" % actor.move_left
+			hint = "▶ 轮到你：点棋盘移动（剩%d步）→ 普攻随机 / 「招式」选招 / 「守势」 / 策略按钮 / 丹药" % actor.move_left
 	info_label.text = "%s\n%s\n%s %s" % [
 		_unit_line(battle.player),
 		_unit_line(battle.opponent),
@@ -358,6 +373,18 @@ func update_state(battle) -> void:
 	switch_btn.text = next_name
 	# 守势按钮动态标签
 	guard_btn.text = "守势·%s" % pl.stance if pl.stance != "" else "守势"
+	# —— v0.5 策略按钮动态标签与启停（部位：自动/随机/手动/重点·X；护体：守常/周天/凝罡/守一）——
+	var can_cycle: bool = not battle.battle_over and actor == battle.player
+	strategy_btn.disabled = not can_cycle
+	shield_strategy_btn.disabled = not can_cycle
+	var ps: String = battle._part_strategy
+	var focus_tail := ""
+	if ps == "重点" and battle._focus_part != "":
+		focus_tail = "·%s" % battle._focus_part
+	strategy_btn.text = "部位：%s%s" % [ps, focus_tail]
+	var ss: String = pl.shield_strategy
+	var over: String = {"凝罡": "（125%）", "守一": "（150%）"}.get(ss, "")
+	shield_strategy_btn.text = "护体：%s%s" % [ss, over]
 
 
 ## 单位信息缩略行（布局 v0.4：顶部 56px 三条——细节在部位按钮与解说里看）
@@ -390,6 +417,8 @@ func _unit_line(u: Unit) -> String:
 	# 守势
 	if u.stance != "":
 		s += " 守势:%s[%s]" % [u.stance, " ".join(u.guard_parts)]
+	# v0.5 护体玄气（罩 cur/max·策略档——回合末按档结算补罩）
+	s += " 罩%.0f/%.0f·%s" % [u.shield_cur, u.shield_max, u.shield_strategy]
 	# 状态
 	if not u.statuses.is_empty():
 		var st: Array[String] = []
