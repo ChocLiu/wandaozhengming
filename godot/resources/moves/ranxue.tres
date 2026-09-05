@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Move" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://mechanics/move.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ranxue"
+display_name = "燃血"
+move_type = "普通"
+cost_pool = "气血"
+cost_amount = 10.0
+speed_bonus = 5.0
+range_min = 1
+range_max = 3
+area_pattern = "单点"
+cooldown = 1
+power_mod = 1.3
+target_parts = PackedStringArray("胸腹", "手足")
+effects = PackedStringArray("灼烧", "点火", "燃血")

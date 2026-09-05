@@ -56,6 +56,16 @@ const SHIELD_PER_PROF := 2.0     # 罩上限 += 修为称号档 × 此值（称�
 const SHIELD_UPKEEP := 1.0       # 罩>0 时每回合行动开始扣的维持玄力（各档同付；玄力空免扣不衰减）
 const SHIELD_STRATEGY_PCT := {"守常": 0.0, "周天": 1.0, "凝罡": 1.25, "守一": 1.5}  # 策略档 → 补罩目标（罩上限倍数；守常=不灌注）
 const SHIELD_POUR_MULT := [1.0, 1.25, 1.5]    # 费率段单价：罩≤100% 段 1:1 / 100~125% 段 1.25× / 125~150% 段 1.5×（先填低价段）
+# —— 场地机制（v0.0.6《战斗系统》§7.1：火区/阵节点——场地面首批内容，焚天与太虚的战场表达）——
+const FIRE_MAX := 3          # 火区强度上限
+const FIRE_SPREAD_SRC := 2   # fire≥此值才向四邻扩散（-1 衰减）——fire=1 余烬不扩散
+const FIRE_DOT_MULT := 2.0   # 火区行动伤 = fire × 此值（不经防御链——场地规则伤害）
+const IGNITE_FIRE := 2       # 火浪/爆炎命中点火强度
+const RANXUE_FIRE := 3       # 燃血强点火强度
+const RANXUE_SELF_BURN := 2  # 燃血自燃灼烧回合
+const ARRAY_TRIGGER_DMG := 6.0    # 踏入阵节点触发伤害
+const ARRAY_CHAIN_DMG := 10.0     # 三连成阵每格爆发伤害
+const ARRAY_PARALYZE_TURNS := 1   # 踏入触发麻痹回合
 # —— 受伤程度链（v0.0.5《战斗系统》§5.3——破防余量 → 肉身强度衰减 → 对气血比例定伤档，不按倍数）——
 const FLESH_ABSORB := {"凡人": 0.15, "练气": 0.2, "筑基": 0.24, "金丹": 0.28}  # 肉身强度衰减率（初值待调）
 const WOUND_LIGHT_RATIO := 0.08  # 有效余量 ≥ 气血上限此比例 → 轻伤（初值待调）
@@ -96,6 +106,7 @@ var _part_strategy := "自动"     # 部位策略：自动/随机/手动/重点�
 var _focus_part := ""            # 重点策略锁定的部位（该部位毁则自动退回「自动」）
 var _part_pick_mode := ""        # 部位行弹出用途："" 无 / "focus" 重点锁定 / "attack" 手动出招待点选（防两套弹窗串台）
 var _rng := RandomNumberGenerator.new()
+var _array_pending: Move = null  # v0.0.6 布阵招式已选、等点格（太虚点）
 
 
 func _stat_bump(key: String) -> void:
@@ -119,13 +130,14 @@ func _ready() -> void:
 	# 场景重载后 autoload 子系统残留上一场状态——先清场（否则时序冻结、单位堆积）
 	UnitSystem.reset_all()
 	TimelineSystem.reset_all()
+	FieldSystem.reset()  # v0.0.6：场地面数据（火区/阵节点）跨场清空——此前 cells 无人使用未暴露
 	player = UnitSystem.spawn({
 		"id": "player", "display_name": "你", "team": 0, "realm": "金丹",
 		"base_speed": 75.0, "base_agility": 40.0, "base_move_speed": 75.0,
 		"base_attack_power": 18.0, "base_armor": 20.0,
 		"pools": ResourceSystem.init_pools(100.0, 100.0, 80.0, 50.0),
 		"rules": {"空间": 60.0},
-		"technique_proficiency": {"qinglian_jiange": 15.0, "pojunjuan": 5.0},
+		"technique_proficiency": {"qinglian_jiange": 15.0, "pojunjuan": 5.0, "taixu_zhenjing": 5.0},
 		"dao_proficiency": {"剑道": 25.0},
 		"pos": Vector2i(2, 5),
 		"items": {"止血丹": 3},
@@ -133,7 +145,8 @@ func _ready() -> void:
 	_mount(player,
 		load("res://resources/techniques/qinglian_xinfa.tres"),
 		[load("res://resources/techniques/qinglian_jiange.tres"),
-		 load("res://resources/techniques/pojunjuan.tres")])
+		 load("res://resources/techniques/pojunjuan.tres"),
+		 load("res://resources/techniques/taixu_zhenjing.tres")])  # v0.0.6：招式槽挂太虚阵经——战斗内可切换
 	opponent = UnitSystem.spawn({
 		"id": "opponent", "display_name": "散修", "team": 1, "realm": "金丹",
 		"base_speed": 75.0, "base_agility": 90.0, "base_move_speed": 75.0,
@@ -359,6 +372,9 @@ func _on_unit_ready(u: Unit) -> void:
 		_say(Nar.bleed_tick(u))
 		AudioManager.sfx("失血")
 	StatusSystem.tick_turn(u)
+	# —— v0.0.6 场地机制（§7.1）：火势先蔓延（全场结算一次），再烧行动者脚下火区——
+	_spread_fire()
+	_fire_tick(u)
 	_check_death(u)
 	if battle_over:
 		return
@@ -413,8 +429,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var cell := _pixel_to_cell(event.position)
-		if cell.x >= 0:
-			_try_move(player, cell)
+		if cell.x < 0:
+			return
+		# v0.0.6 布阵点格模式（太虚点：面板选招后点空格落子——优先于移动判定）
+		if _array_pending != null:
+			var mv: Move = _array_pending
+			if _cast_array(player, cell, mv):
+				_array_pending = null
+				current_acted = true
+				if player.move_left <= 0:
+					_say(Nar.turn_auto_end(player))
+					_end_turn(player)
+			return
+		_try_move(player, cell)
 
 
 func _try_move(u: Unit, cell: Vector2i) -> void:
@@ -511,6 +538,7 @@ func _walk(u: Unit, enemy: Unit, goal: Vector2i, g: Dictionary, budget: int) -> 
 	ResourceSystem.drain(u, "体力", float(cost) * MOVE_STAMINA_COST)
 	u.pos = goal
 	u.move_left -= cost
+	_array_trigger(u)  # v0.0.6 踏阵触发（§7.1：踩敌方节点受场地伤+麻痹，节点消耗）
 	_update_facing(u, path, from)
 	hud.clear_parts()
 	hud.clear_moves()
@@ -580,6 +608,11 @@ func _on_move_selected(move_id: String) -> void:
 		hud.clear_moves()
 		return
 	hud.clear_moves()
+	if "布阵" in move.effects:
+		# v0.0.6 布阵招式（太虚点）：进入点格模式，等 _unhandled_input 落子——不弹部位行
+		_array_pending = move
+		_say(Nar.array_pick_cell(player))
+		return
 	_resolve_part_and_attack(move)  # v0.0.5：按部位策略直接出手（手动档才弹部位行）
 
 
@@ -957,6 +990,8 @@ func _ai_approach(u: Unit, target: Unit, want_range: int) -> void:
 func _do_attack(attacker: Unit, target: Unit, part: String, move: Move, infused: bool) -> void:
 	if move == null or not target.body.has(part):
 		return
+	if "布阵" in move.effects:
+		return  # 布阵招式走 _cast_array（玩家点格 / 面板分流），不进部位攻击链
 	if _move_cd(attacker, move) > 0:
 		_say(Nar.cd_busy(move))
 		return
@@ -1184,6 +1219,143 @@ func _apply_hit(attacker: Unit, target: Unit, part: String, move: Move, realm_d:
 		_say(Nar.burn(target))
 		AudioManager.sfx("灼烧")
 		_spawn_fx("burn", tc, tc)
+	# v0.0.6 点火（§7.1：命中写火区——火浪/爆炎 fire=2、燃血 fire=3）
+	if "点火" in move.effects:
+		_set_fire(target.pos, RANXUE_FIRE if "燃血" in move.effects else IGNITE_FIRE)
+		_say(Nar.fire_set(target))
+		_spawn_fx("burn", _cell_center(target.pos), _cell_center(target.pos))
+	# 燃血自燃（烧气血点火的代价——引燃精血必遭反噬）
+	if "燃血" in move.effects:
+		StatusSystem.add_status(attacker, "灼烧", RANXUE_SELF_BURN)
+		_say(Nar.ranxue(attacker))
+
+
+# ---------- v0.0.6 场地机制（§7.1：火区/阵节点——焚天与太虚的战场表达） ----------
+
+## 点火写入（火区与阵节点同格互斥：后写覆盖——放火烧不掉阵，布阵压不住火）
+func _set_fire(cell: Vector2i, power: int) -> void:
+	if not FieldSystem.in_bounds(cell):
+		return
+	var data: Dictionary = FieldSystem.get_cell(cell)
+	if int(data.get("fire", 0)) >= FIRE_MAX:
+		return
+	FieldSystem.set_cell(cell, {"fire": maxi(int(data.get("fire", 0)), power)})
+	_stat_bump("fire_set")
+
+
+## 火区蔓延（单位行动开始时全场结算一次——fire≥2 向四邻扩散 fire-1，确定性不掷骰，可回放）
+func _spread_fire() -> void:
+	var spreads: Dictionary = {}
+	for c in FieldSystem.cells.keys():
+		var f: int = int(FieldSystem.cells[c].get("fire", 0))
+		if f >= FIRE_SPREAD_SRC:
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var np: Vector2i = c + d
+				if FieldSystem.in_bounds(np):
+					spreads[np] = maxi(int(spreads.get(np, 0)), f - 1)
+	for c in spreads.keys():
+		if int(FieldSystem.get_cell(c).get("fire", 0)) < int(spreads[c]):
+			FieldSystem.set_cell(c, {"fire": int(spreads[c])})
+			_stat_bump("fire_spread")
+
+
+## 行动者脚下火区灼烧（不经防御链的场地规则伤害——敌我一致的双刃剑：焚天玩家也要控火走位）
+func _fire_tick(u: Unit) -> void:
+	var f: int = int(FieldSystem.get_cell(u.pos).get("fire", 0))
+	if f <= 0:
+		return
+	var dmg: float = f * FIRE_DOT_MULT
+	ResourceSystem.drain(u, "气血", dmg)
+	StatusSystem.add_status(u, "灼烧", 1)
+	_say(Nar.fire_burn(u, dmg))
+	AudioManager.sfx("灼烧")
+	_spawn_fx("burn", _cell_center(u.pos), _cell_center(u.pos))
+	_stat_bump("fire_burn")
+	_check_death(u)
+
+
+## 布阵（太虚点）：射程/冷却/手臂/资源检查 → 写入阵节点 → 三连成阵检测。返回是否布成
+func _cast_array(u: Unit, cell: Vector2i, move: Move) -> bool:
+	if not FieldSystem.in_bounds(cell):
+		_say(Nar.array_out_of_range(u))
+		return false
+	if _chebyshev(u.pos, cell) > move.range_max or _chebyshev(u.pos, cell) < move.range_min:
+		_say(Nar.array_out_of_range(u))
+		return false
+	if cell == player.pos or cell == opponent.pos:
+		_say(Nar.array_cell_blocked(u))
+		return false
+	if _move_cd(u, move) > 0:
+		_say(Nar.cd_busy(move))
+		return false
+	if not BodySystem.can_use_move(u, move):
+		_say(Nar.arm_disabled(u, move))
+		return false
+	if not ResourceSystem.spend(u, move.cost_pool, move.cost_amount):
+		_say(Nar.no_stamina(u, move.cost_pool, move))
+		return false
+	FieldSystem.set_cell(cell, {"array": u.id})
+	_apply_cooldown(u, move)
+	_say(Nar.array_set(u, cell))
+	AudioManager.sfx("布阵")
+	_spawn_fx("guard", _cell_center(cell), _cell_center(cell))  # 落子波纹复用守势弧光
+	_stat_bump("array_set")
+	_check_array_chain(u)
+	return true
+
+
+## 踏阵触发（移动落点调用）：踩敌方节点 → 场地伤 + 麻痹，节点消耗（肉身破阵）
+func _array_trigger(u: Unit) -> void:
+	var data: Dictionary = FieldSystem.get_cell(u.pos)
+	if not data.has("array"):
+		return
+	FieldSystem.clear_cell(u.pos)
+	var enemy: Unit = opponent if u == player else player
+	if data["array"] != enemy.id:
+		_say(Nar.array_self(u))
+		return
+	ResourceSystem.drain(u, "气血", ARRAY_TRIGGER_DMG)
+	StatusSystem.add_status(u, "麻痹", ARRAY_PARALYZE_TURNS)
+	_say(Nar.array_trigger(u, enemy))
+	AudioManager.sfx("踏阵")
+	_spawn_fx("break", _cell_center(u.pos), _cell_center(u.pos), {"text": "踏阵！"})
+	_stat_bump("array_trigger")
+	_check_death(u)
+
+
+## 三连成阵：布阵方节点三格共线（横/竖/斜）→ 三节点爆发（格上有单位才结算），节点全消
+func _check_array_chain(u: Unit) -> void:
+	var nodes: Array = []
+	for c in FieldSystem.cells.keys():
+		if FieldSystem.cells[c].get("array", "") == u.id:
+			nodes.append(c)
+	if nodes.size() < 3:
+		return
+	for i in range(nodes.size()):
+		for j in range(i + 1, nodes.size()):
+			for k in range(j + 1, nodes.size()):
+				var a: Vector2i = nodes[i]
+				var b: Vector2i = nodes[j]
+				var c: Vector2i = nodes[k]
+				# 三格共线判定：向量叉积为 0
+				if (b.x - a.x) * (c.y - a.y) != (b.y - a.y) * (c.x - a.x):
+					continue
+				for p in [a, b, c]:
+					FieldSystem.clear_cell(p)
+					var victim: Unit = null
+					if player.pos == p:
+						victim = player
+					elif opponent.pos == p:
+						victim = opponent
+					if victim != null and victim.id != u.id:
+						ResourceSystem.drain(victim, "气血", ARRAY_CHAIN_DMG)
+						_say(Nar.array_chain_hit(u, victim))
+						_check_death(victim)
+				_say(Nar.array_chain(u))
+				AudioManager.sfx("踏阵")
+				_spawn_fx("break", _cell_center(b), _cell_center(b), {"text": "阵成！"})
+				_stat_bump("array_chain")
+				return
 
 
 func _gain_proficiency(u: Unit) -> void:
@@ -1333,6 +1505,8 @@ func _pick_random_move(u: Unit, include_variants: bool = false) -> Move:
 		return null
 	var ready: Array[Move] = []
 	for m in tech.moves:
+		if "布阵" in m.effects:
+			continue  # v0.0.6 布阵招式不进普攻随机池（需手动选格——随机布在哪没有意义）
 		if _move_cd(u, m) <= 0 and BodySystem.can_use_move(u, m):
 			ready.append(m)
 	if include_variants:
@@ -1582,6 +1756,24 @@ func _draw() -> void:
 					draw_rect(
 						Rect2(ORIGIN + Vector2(x * CELL + 4.0, y * CELL + 4.0), Vector2(CELL - 8, CELL - 8)),
 						Color(0.85, 0.25, 0.2, 0.35), false, 1.5)  # 敌方武器威胁区描边——区内朝敌逼近步价 ×2
+	# v0.0.6 场地机制渲染（§7.1：火区橙红渐强+火苗 / 阵节点青金标记）
+	for x in range(FieldSystem.GRID_W):
+		for y in range(FieldSystem.GRID_H):
+			var c := Vector2i(x, y)
+			var cell_data: Dictionary = FieldSystem.get_cell(c)
+			var f: int = int(cell_data.get("fire", 0))
+			if f > 0:
+				draw_rect(
+					Rect2(ORIGIN + Vector2(x * CELL + 6.0, y * CELL + 6.0), Vector2(CELL - 12, CELL - 12)),
+					Color(0.9, 0.3, 0.05, 0.12 + 0.09 * f))
+				var fb := ORIGIN + Vector2(x * CELL + CELL * 0.5, y * CELL + CELL - 12.0)
+				draw_colored_polygon(PackedVector2Array([
+					fb + Vector2(-6, 0), fb + Vector2(6, 0), fb + Vector2(0, -8.0 - 2.0 * f),
+				]), Color(0.95, 0.5, 0.1, 0.7))
+			if cell_data.has("array"):
+				var cc := ORIGIN + Vector2(x * CELL + CELL / 2.0, y * CELL + CELL / 2.0)
+				draw_circle(cc, 10.0, Color(0.2, 0.6, 0.55, 0.8))
+				draw_circle(cc, 5.0, Color(0.85, 0.9, 0.7, 0.9))
 	_draw_unit(player, Color(0.4, 0.8, 1.0))
 	_draw_unit(opponent, Color(1.0, 0.45, 0.45))
 	_draw_fx()

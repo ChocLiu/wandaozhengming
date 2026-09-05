@@ -1,8 +1,9 @@
-[gd_resource type="Resource" script_class="Technique" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="Technique" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://mechanics/technique.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/moves/huolang.tres" id="2"]
 [ext_resource type="Resource" path="res://resources/moves/baoyan.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/moves/ranxue.tres" id="4"]
 
 [resource]
 script = ExtResource("1")
@@ -10,10 +11,10 @@ id = "fentian_jue"
 display_name = "焚天诀"
 daoxi = "火行道"
 category = "玄术"
-moves = [ExtResource("2"), ExtResource("3")]
+moves = [ExtResource("2"), ExtResource("3"), ExtResource("4")]
 weapon_req = "空手"
 arm_usage = "副手结印"
-core_loop = "烧气血换火势，火势按回合蔓延灼烧全场（火势蔓延机制后置，当前招式自带灼烧）"
+core_loop = "烧气血换火势，火势按回合蔓延灼烧全场（v0.0.6 实装：火浪/爆炎点火 fire=2、燃血 fire=3；火区确定性蔓延；灼烧敌我双刃剑）"
 target_parts = PackedStringArray("胸腹", "左臂", "右臂", "双腿")
 rule_slots = PackedStringArray("火")
 bonus_attack = 5.0

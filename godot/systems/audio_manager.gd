@@ -42,6 +42,9 @@ const RECIPES := {
 	"剑意": {"kind": "chime", "freqs": [880.0], "dur": 0.25, "vol": 0.26, "decay": 4.0, "partials": [1.0, 1.26, 2.0]},
 	"溃散": {"kind": "sweep", "freqs": [700.0, 200.0], "dur": 0.35, "vol": 0.24, "decay": 4.0},
 	"大招": {"kind": "noise", "freqs": [220.0], "dur": 0.4, "vol": 0.34, "decay": 4.0},
+	# —— v0.0.6 场地机制（《战斗系统》§7.1：火区/阵节点）——
+	"布阵": {"kind": "tone", "freqs": [220.0], "dur": 0.24, "vol": 0.2, "decay": 5.0},
+	"踏阵": {"kind": "chime", "freqs": [540.0], "dur": 0.16, "vol": 0.26, "decay": 5.0, "partials": [1.0, 1.5]},
 }
 
 var _players: Array[AudioStreamPlayer] = []

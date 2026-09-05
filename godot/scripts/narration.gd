@@ -128,6 +128,52 @@ static func burn(target) -> Dictionary:
 	return {"t": "%s被灼烧！烈焰缠身，每回合流失气血" % target.display_name, "c": C_BURN}
 
 
+# ---------- v0.0.6 场地机制（火区/阵节点，《战斗系统》§7.1） ----------
+
+static func fire_set(target) -> Dictionary:
+	return {"t": "%s脚下之地窜起火焰——火势已成！" % target.display_name, "c": C_BURN}
+
+
+static func fire_burn(u, dmg: float) -> Dictionary:
+	return {"t": "%s被身周火势燎伤，气血流失 %d！" % [u.display_name, int(dmg)], "c": C_BURN}
+
+
+static func ranxue(u) -> Dictionary:
+	return {"t": "%s引燃精血催动火势——烈焰暴涨，自身亦遭反噬" % u.display_name, "c": C_BURN}
+
+
+static func array_pick_cell(u) -> Dictionary:
+	return {"t": "%s手掐法诀——点击一处空格布下阵节点" % u.display_name, "c": C_INFO}
+
+
+static func array_out_of_range(u) -> Dictionary:
+	return {"t": "阵节点须布在射程之内、且不能落在任何人的脚下", "c": C_INFO}
+
+
+static func array_cell_blocked(u) -> Dictionary:
+	return {"t": "此格不可布阵——不能埋在脚下", "c": C_INFO}
+
+
+static func array_set(u, cell: Vector2i) -> Dictionary:
+	return {"t": "%s于（%d,%d）布下一枚阵节点，如棋落子" % [u.display_name, cell.x, cell.y], "c": C_INFO}
+
+
+static func array_trigger(u, enemy) -> Dictionary:
+	return {"t": "%s一步踏中%s埋下的阵节点——灵气炸开，身形一滞！" % [u.display_name, enemy.display_name], "c": C_RULE}
+
+
+static func array_self(u) -> Dictionary:
+	return {"t": "%s踏散了自己的阵节点——阵势自破" % u.display_name, "c": C_INFO}
+
+
+static func array_chain(u) -> Dictionary:
+	return {"t": "三节点连成一线——阵成！灵气沿阵线炸裂！", "c": C_RULE}
+
+
+static func array_chain_hit(u, victim) -> Dictionary:
+	return {"t": "阵力贯体——%s气血翻涌，一口血喷出" % victim.display_name, "c": C_RULE}
+
+
 static func bleed_tick(u) -> Dictionary:
 	var v := pick([
 		"%s的伤口仍在淌血……",

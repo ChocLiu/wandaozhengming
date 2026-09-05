@@ -13,8 +13,10 @@ const STATUS_DEFS := {
 func add_status(unit, status_id: String, turns: int) -> void:
 	if not STATUS_DEFS.has(status_id):
 		return
+	# 重复施加取更长回合（v0.0.6 修复：火区灼烧每回合 +1 不应覆盖掉火浪的 3 回合灼烧）
+	var prev: int = int(unit.statuses.get(status_id, {}).get("turns", 0))
 	unit.statuses[status_id] = {
-		"turns": turns,
+		"turns": maxi(prev, turns),
 		"def": STATUS_DEFS[status_id],
 	}
 
