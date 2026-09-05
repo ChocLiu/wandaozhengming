@@ -25,7 +25,7 @@ var move_speed: float = 55.0
 var attack_power: float = 20.0        # 破防模型：攻击力（伤效乘区）
 var armor: float = 15.0               # 破防模型：防御（守势集中按部位修正）
 var parry: float = 10.0               # 武器招架值（§5.1.3——伤效乘区）
-# —— 护体玄气（v0.5 新增：破防模型外层的可回复缓冲带，《战斗系统》§5）——
+# —— 护体玄气（v0.0.5 新增：破防模型外层的可回复缓冲带，《战斗系统》§5）——
 var shield_cur: float = 0.0           # 护体玄气当前值（破防先扣罩、见底才见肉）
 var shield_max: float = 0.0           # 上限 = 境界基数 + 挂载 bonus_shield + 修为档×2（battle._recalc_shield）
 var shield_broken_noted: bool = false # 罩首次归零只解说一次
@@ -40,7 +40,7 @@ var cooldowns: Dictionary = {}                # 招式id -> 剩余冷却回合
 var atb_progress: float = 0.0
 var alive: bool = true
 var move_left: int = 0                # 本回合剩余步数（腿伤修正后）
-# —— 部位伤效 / 守势（v0.3）——
+# —— 部位伤效 / 守势（v0.0.3）——
 var main_arm: String = "右臂"         # 主用臂（惯用手）——§2.5 伤效与换手
 var offhand: bool = false             # 已换手（副手生疏：攻击/招架 ×0.8）
 var guard_parts: Array[String] = []   # 守势重点保护部位（§5.1.2——保持到主动更改）
@@ -53,9 +53,9 @@ var dao_proficiency: Dictionary = {}  # 道领悟值（P0 仅显示）
 var items: Dictionary = {"止血丹": 3}
 var items_used_this_turn: Dictionary = {}  # {药名: 本回合已用次数}——每回合每种丹药限用一次（回合开始清零）
 var pos: Vector2i = Vector2i(5, 5)    # 场上位置
-# —— 剑意机制（《功法系统》§3，v0.4）——
+# —— 剑意机制（《功法系统》§3，v0.0.4）——
 var sword_intent: int = 0             # 剑意层 = 连续按谱命中数（0~3）；被打断（闪避/招架）清空；挂在单位上、切换功法不清空
-# —— 朝向（v0.5，《战斗系统》§1.2：视觉与几何两个概念）——
+# —— 朝向（v0.0.5，《战斗系统》§1.2：视觉与几何两个概念）——
 var vis_facing: float = 1.0           # 贴图朝向（±1 水平镜像——美术统一朝向、引擎翻转；行动时面朝对手，同列保持）
 var geo_facing: Vector2i = Vector2i.ZERO  # 几何背向 = 最近一次移动的最后一步方向；(0,0)=未移动=无背（龟缩不可绕）
 # —— 表现层（战斗内插值——移动平滑与死亡淡出）——

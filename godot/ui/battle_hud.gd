@@ -2,7 +2,7 @@ class_name BattleHud
 extends Control
 ## P0 战斗 HUD（程序化构建，无 .tscn）。
 ## 布局（1280×720 固定）：左上=单位信息 · 右侧竖排=战斗解说 · 招式面板行 · 部位按钮行 · 操作按钮行。
-## v0.3：守势面板（部位行+架势按钮复用）；部位按钮标「守」；臂伤禁用招式；主用臂标记。
+## v0.0.3：守势面板（部位行+架势按钮复用）；部位按钮标「守」；臂伤禁用招式；主用臂标记。
 ## 全部用 position/size 定位——锚点对 Node2D 下的根 Control 有踩坑记录（见 git 历史）。
 
 signal attack_pressed        # 普攻（英雄坛说式随机出招）
@@ -17,8 +17,8 @@ signal guard_part_toggled(part: String, on: bool)
 signal guard_stance_selected(stance: String)
 signal guard_cancel
 signal restart_requested
-signal strategy_cycled           # v0.5 部位策略循环（自动/随机/手动/重点）
-signal shield_strategy_cycled    # v0.5 护体策略循环（守常/周天/凝罡/守一）
+signal strategy_cycled           # v0.0.5 部位策略循环（自动/随机/手动/重点）
+signal shield_strategy_cycled    # v0.0.5 护体策略循环（守常/周天/凝罡/守一）
 
 const Grades := preload("res://scripts/cultivation_grades.gd")
 
@@ -40,7 +40,7 @@ const PANEL_INSETS := {
 	"btn": {"l": 10, "t": 4, "r": 10, "b": 4},
 }
 
-# —— 美术成品（布局 v0.4 精确尺寸：信息横条 1256×56、解说栏 632×420、按钮底板 96×36、图标 64×64）——
+# —— 美术成品（布局 v0.0.4 精确尺寸：信息横条 1256×56、解说栏 632×420、按钮底板 96×36、图标 64×64）——
 const TEX_PANEL_INFO := preload("res://assets/ui/UI_信息栏底板_v2_ai.png")
 const TEX_PANEL_LOG := preload("res://assets/ui/UI_解说栏底板_v2_ai.png")
 const TEX_BTN := preload("res://assets/ui/UI_按钮底板_v1_ai.png")
@@ -63,8 +63,8 @@ var restart_btn: Button
 var switch_btn: Button
 var item_btn: Button
 var guard_btn: Button
-var strategy_btn: Button         # v0.5 部位策略循环按钮（棋盘下方空条）
-var shield_strategy_btn: Button  # v0.5 护体策略循环按钮（棋盘下方空条）
+var strategy_btn: Button         # v0.0.5 部位策略循环按钮（棋盘下方空条）
+var shield_strategy_btn: Button  # v0.0.5 护体策略循环按钮（棋盘下方空条）
 var _action_buttons: Array[Button] = []
 var _guard_part_buttons: Dictionary = {}   # part -> Button（守势选择面板中）
 var _item_used := false       # 本回合该丹药已用（每回合每种限一次）
@@ -169,7 +169,7 @@ func _ready() -> void:
 	restart_btn.size = Vector2(160, 44)
 	add_child(restart_btn)
 
-	# —— v0.5 棋盘下方空条（12..640 × y678..716）：部位策略 + 护体策略循环按钮（不占操作行）——
+	# —— v0.0.5 棋盘下方空条（12..640 × y678..716）：部位策略 + 护体策略循环按钮（不占操作行）——
 	# 启停不由 enable_actions 管——update_state 每帧按「是否轮到你」设置
 	strategy_btn = _make_button("部位：自动", func(): strategy_cycled.emit())
 	strategy_btn.position = Vector2(12, 678)
@@ -373,7 +373,7 @@ func update_state(battle) -> void:
 	switch_btn.text = next_name
 	# 守势按钮动态标签
 	guard_btn.text = "守势·%s" % pl.stance if pl.stance != "" else "守势"
-	# —— v0.5 策略按钮动态标签与启停（部位：自动/随机/手动/重点·X；护体：守常/周天/凝罡/守一）——
+	# —— v0.0.5 策略按钮动态标签与启停（部位：自动/随机/手动/重点·X；护体：守常/周天/凝罡/守一）——
 	var can_cycle: bool = not battle.battle_over and actor == battle.player
 	strategy_btn.disabled = not can_cycle
 	shield_strategy_btn.disabled = not can_cycle
@@ -387,7 +387,7 @@ func update_state(battle) -> void:
 	shield_strategy_btn.text = "护体：%s%s" % [ss, over]
 
 
-## 单位信息缩略行（布局 v0.4：顶部 56px 三条——细节在部位按钮与解说里看）
+## 单位信息缩略行（布局 v0.0.4：顶部 56px 三条——细节在部位按钮与解说里看）
 func _unit_line(u: Unit) -> String:
 	if u == null:
 		return "—"
@@ -417,7 +417,7 @@ func _unit_line(u: Unit) -> String:
 	# 守势
 	if u.stance != "":
 		s += " 守势:%s[%s]" % [u.stance, " ".join(u.guard_parts)]
-	# v0.5 护体玄气（罩 cur/max·策略档——回合末按档结算补罩）
+	# v0.0.5 护体玄气（罩 cur/max·策略档——回合末按档结算补罩）
 	s += " 罩%.0f/%.0f·%s" % [u.shield_cur, u.shield_max, u.shield_strategy]
 	# 状态
 	if not u.statuses.is_empty():

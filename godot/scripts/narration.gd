@@ -3,7 +3,7 @@ class_name Narration
 ## 所有函数返回 {t: 文本, c: 颜色}，调用方通过 hud.log_nar(t, c) 输出。
 ## 变体词库防疲劳；着色按事件类型（破防红/招架灰/规则金/灼烧橙/死亡深红/信息白）。
 
-# 墨色系解说配色（纸面 UI——浅色卷轴底 + 深色墨字，布局 v0.4）
+# 墨色系解说配色（纸面 UI——浅色卷轴底 + 深色墨字，布局 v0.0.4）
 const C_HIT := Color(0.55, 0.14, 0.1)     # 破防：朱砂墨
 const C_PARRY := Color(0.33, 0.37, 0.42)  # 招架/闪避：青灰墨
 const C_WEAR := Color(0.5, 0.5, 0.48)     # 磨防/失血：淡墨
@@ -280,7 +280,7 @@ static func ignore_substitute(attacker, target) -> Dictionary:
 	return {"t": "剑意如丝——%s无从代受，要害尽露！" % target.display_name, "c": C_HIT}
 
 
-# ---------- v0.5：朝向与绕后 / 部位策略 / 流血 / 护体玄气（§1.1 / §2.3 / §5.2 / §5.3） ----------
+# ---------- v0.0.5：朝向与绕后 / 部位策略 / 流血 / 护体玄气（§1.1 / §2.3 / §5.2 / §5.3） ----------
 
 static func flank(attacker, target) -> Dictionary:
 	var v := pick([

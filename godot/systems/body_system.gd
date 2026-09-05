@@ -1,6 +1,6 @@
 extends Node
 ## ⑥ 部位面：部位结构 / 部位状态机 / 失血结算 / 要害判定 / 代受映射 / 部位伤效
-## 对应文档：《战斗系统》§2（含 v0.3 §2.5 部位伤效、§5.1 防御博弈）
+## 对应文档：《战斗系统》§2（含 v0.0.3 §2.5 部位伤效、§5.1 防御博弈）
 ## 红线：部位是状态机，不是「部位血条」；伤效是乘区+禁用，统一由本系统维护。
 
 enum PartState { OK, LIGHT, HEAVY, DESTROYED }
@@ -10,7 +10,7 @@ const STATE_NAMES := ["完好", "轻伤", "重伤", "毁"]
 ## 境界阶梯（§5.1.3 战力差距阶梯）：差 1 阶=招架必破；差 2 阶+=护体虚设、伤害加深
 const REALM_TIER := {"凡人": 0, "练气": 1, "筑基": 2, "金丹": 3, "元婴": 4}
 
-## 境界 → 部位结构（v0.3：「手足」拆分为 左臂/右臂/双腿——各为独立状态机）。
+## 境界 → 部位结构（v0.0.3：「手足」拆分为 左臂/右臂/双腿——各为独立状态机）。
 ## P0 只做 凡人/练气/金丹 三层（路线图 P0 范围），化神+ 后置。
 const REALM_BODIES := {
 	"凡人": {
@@ -93,7 +93,7 @@ func make_body(realm: String) -> Dictionary:
 
 
 ## 伤害一个部位。severity: 1=轻伤一格, 2=重伤, 3=毁。
-## v0.5：不再无条件置 bleeding——是否流血由调用方按武器利刃属性掷骰后经 set_bleeding 置位
+## v0.0.5：不再无条件置 bleeding——是否流血由调用方按武器利刃属性掷骰后经 set_bleeding 置位
 ## （《战斗系统》§2.3：纯刃必流/半刃中概率/钝器大概率不流——轻中重伤皆可流，只是概率不同）。
 func hurt(unit, part: String, severity: int = 1) -> void:
 	var b: Dictionary = unit.body.get(part, {})
@@ -108,7 +108,7 @@ func hurt(unit, part: String, severity: int = 1) -> void:
 			EventBus.vital_hit.emit(unit, part)
 
 
-## 按掷骰结果设置某部位是否流血（v0.5：失血概率化后由战斗层调用）
+## 按掷骰结果设置某部位是否流血（v0.0.5：失血概率化后由战斗层调用）
 func set_bleeding(unit, part: String, on: bool) -> void:
 	var b: Dictionary = unit.body.get(part, {})
 	if b.is_empty() or b.state < PartState.LIGHT:
