@@ -109,11 +109,13 @@ func _ready() -> void:
 	_autoplay = "--autoplay" in user_args
 	if _autoplay:
 		Engine.time_scale = 4.0  # 自对弈加速（挂机长跑更快出结果）
-	# v0.5：--seed N 注入战斗内掷骰（B 红线：确定性内核可回放——新掷骰全走 _rng）
+	# v0.5：--seed N 注入战斗内掷骰（B 红线：确定性内核可回放——判定掷骰全走 _rng）
 	var seed_i := user_args.find("--seed")
 	if seed_i >= 0 and seed_i + 1 < user_args.size():
 		_rng.seed = int(user_args[seed_i + 1])
-	randomize()
+	else:
+		_rng.randomize()  # 无 seed 时随机开局——保证多场自对弈各不相同
+	randomize()  # 表现层（解说变体 / 音效噪声）仍用全局 RNG，不影响判定回放
 	# 场景重载后 autoload 子系统残留上一场状态——先清场（否则时序冻结、单位堆积）
 	UnitSystem.reset_all()
 	TimelineSystem.reset_all()
@@ -667,7 +669,7 @@ func _part_by_strategy(move: Move) -> String:
 			if int(opponent.body[p].state) != BodySystem.PartState.DESTROYED:
 				alive.append(p)
 		if not alive.is_empty():
-			return alive[randi() % alive.size()]
+			return alive[_rng.randi() % alive.size()]
 	return _auto_pick_part()  # 「自动」= AI 选部位脑确定性化（双方公平同款优先级）
 
 
@@ -813,7 +815,7 @@ func _ai_act_async(u: Unit) -> void:
 	elif _rng.randf() < 0.3:
 		_flank_opportunity(u, target, want_range)  # 射程内 → 概率尝试绕背（成败都照常出招）
 	# 2) 丹药不占行动——流血先吃药（每回合每种限一次），再出招
-	if _bleeding(u) and int(u.items.get("止血丹", 0)) > 0 and int(u.items_used_this_turn.get("止血丹", 0)) < 1 and randf() < 0.3:
+	if _bleeding(u) and int(u.items.get("止血丹", 0)) > 0 and int(u.items_used_this_turn.get("止血丹", 0)) < 1 and _rng.randf() < 0.3:
 		_do_item(u)
 	# 3) 在射程内 → 随机出招（英雄坛说式），打空当（§5.1.6）；无招可用（臂废/冷却）则就此结束
 	if not current_acted:
@@ -823,7 +825,7 @@ func _ai_act_async(u: Unit) -> void:
 			var infuse: bool = (
 				not u.active_technique.rule_slots.is_empty()
 				and ResourceSystem.current(u, "玄力") >= RULE_INFUSE_COST
-				and randf() < 0.4
+				and _rng.randf() < 0.4
 			)
 			_do_attack(u, target, _ai_pick_part(u, target), move, infuse)
 			current_acted = true
@@ -911,15 +913,15 @@ func _ai_pick_part(u: Unit, target: Unit) -> String:
 	for p in candidates:
 		if target.body[p].vital and not target.guard_parts.has(p):
 			unguarded_vitals.append(p)
-	if not unguarded_vitals.is_empty() and randf() < 0.6:
-		return unguarded_vitals[randi() % unguarded_vitals.size()]
+	if not unguarded_vitals.is_empty() and _rng.randf() < 0.6:
+		return unguarded_vitals[_rng.randi() % unguarded_vitals.size()]
 	var unguarded: Array[String] = []
 	for p in candidates:
 		if not target.guard_parts.has(p):
 			unguarded.append(p)
 	if not unguarded.is_empty():
-		return unguarded[randi() % unguarded.size()]
-	return candidates[randi() % candidates.size()]
+		return unguarded[_rng.randi() % unguarded.size()]
+	return candidates[_rng.randi() % candidates.size()]
 
 
 ## 逼近（v0.5 带权最短路）：目标 = 可达的射程边界格（chebyshev==want_range，语义同旧贪婪版——
@@ -1340,15 +1342,15 @@ func _pick_random_move(u: Unit, include_variants: bool = false) -> Move:
 				ready.append(v)
 				if v.move_type == "大招":
 					ultimate = v
-		if ultimate != null and randf() < 0.3:
+		if ultimate != null and _rng.randf() < 0.3:
 			return ultimate
 	if ready.is_empty():
 		return null
 	# 谱机制功法：50% 权重按谱出下一式（AI 也打谱）
 	var beat: Move = _on_beat_move(u)
-	if beat != null and ready.has(beat) and randf() < 0.5:
+	if beat != null and ready.has(beat) and _rng.randf() < 0.5:
 		return beat
-	return ready[randi() % ready.size()]
+	return ready[_rng.randi() % ready.size()]
 
 
 ## 普攻无招可用的原因提示：全部冷却 vs 手臂已废（§2.5）
